@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Questboard</title>
+    <title>BoardOrbit</title>
     <script src="https://cdn-tailwindcss.vercel.app/"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,6 +25,12 @@
         }
         #toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100; }
         .toast { background-color: #06b6d4; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        
+        /* Neue Community Styles */
+        .emoji-btn { transition: transform 0.1s; cursor: pointer; }
+        .emoji-btn:hover { transform: scale(1.3); }
+        .comment-item:hover .comment-actions { opacity: 1; }
+        .comment-actions { opacity: 0; transition: opacity 0.2s; }
     </style>
 </head>
 <body class="bg-slate-900 text-white antialiased">
@@ -33,23 +39,24 @@
     <header class="bg-slate-800/70 backdrop-blur-sm sticky top-0 z-20 shadow-lg">
         <div class="container mx-auto px-4 py-4 max-w-7xl flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold text-cyan-400">🎲 Questboard</h1>
-                <p class="text-slate-400 mt-1">Finde Mitspieler für deine nächste Runde.</p>
+                <h1 class="text-3xl font-bold text-cyan-400">🎲 BoardOrbit</h1>
+                <p class="text-slate-400 mt-1">Finde Mitspieler:innen für deine nächste Brett- und Kartenspielrunde.</p>
             </div>
             <div class="flex items-center gap-4">
                 <a href="https://www.paypal.com/ncp/payment/Q47XPP7KQQVLQ" target="_blank" rel="noopener noreferrer" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
                     <span>☕</span>
                     <span class="hidden sm:inline">Kaffee ausgeben</span>
                 </a>
-                <button id="menu-toggle-btn" class="p-2 rounded-md hover:bg-slate-700">
+                <button id="menu-toggle-btn" class="p-2 rounded-md hover:bg-slate-700 relative">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    <span id="notif-badge" class="hidden absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-800"></span>
                 </button>
             </div>
         </div>
     </header>
 
     <!-- Side Menu -->
-    <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-slate-800 shadow-2xl transform translate-x-full transition-transform z-30">
+    <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-slate-800 shadow-2xl transform translate-x-full transition-transform z-30 overflow-y-auto">
         <div id="side-menu-content" class="p-6"></div>
     </div>
     <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden"></div>
@@ -119,8 +126,9 @@
 
     <!-- All Modals -->
     <div id="shared-quest-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div id="shared-quest-content" class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-lg m-4 modal-enter relative"></div>
+        <div id="shared-quest-content" class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-2xl m-4 modal-enter relative max-h-[90vh] overflow-y-auto"></div>
     </div>
+    
     <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md m-4 modal-enter relative">
             <button id="close-auth-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
@@ -144,6 +152,7 @@
             <p id="auth-error" class="text-red-400 mt-4 text-center h-5"></p>
         </div>
     </div>
+    
     <div id="add-edit-game-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md m-4 modal-enter">
             <h2 id="modal-title" class="text-2xl font-bold mb-6">Neues Quest erstellen</h2>
@@ -179,6 +188,7 @@
             </form>
         </div>
     </div>
+    
     <div id="account-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md m-4 modal-enter relative">
              <button id="close-account-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
@@ -192,6 +202,7 @@
             </div>
         </div>
     </div>
+    
     <div id="imprint-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-lg m-4 modal-enter relative flex flex-col">
              <button id="close-imprint-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl z-10">&times;</button>
@@ -204,6 +215,7 @@
              </div>
         </div>
     </div>
+    
     <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-lg m-4 modal-enter relative flex flex-col">
              <button id="close-privacy-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl z-10">&times;</button>
@@ -239,8 +251,8 @@
     <!-- Firebase and App Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, Timestamp, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification, sendPasswordResetEmail, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // --- Config and Initialization ---
         const firebaseConfig = {
@@ -252,14 +264,20 @@
             appId: "1:718528869080:web:28fdf441af5187c0725dad",
             measurementId: "G-1HPY49Q9DK"
         };
+        
         let db, auth;
         let currentUser = null;
         let verificationCheckInterval = null;
         let initialSharedQuestId = null;
         let allQuests = [];
+        let allComments = [];
+        let allNotifications = [];
         let currentPage = 1;
         const ITEMS_PER_PAGE = 50;
         let sortConfig = { key: 'dateTime', direction: 'asc' };
+        let editModeCommentId = null;
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'spielrunde2';
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -268,6 +286,10 @@
             const urlParams = new URLSearchParams(window.location.search);
             initialSharedQuestId = urlParams.get('quest');
         } catch (e) { console.error("Error initializing Firebase: ", e); }
+
+        // Paths (Rule 1)
+        const getCommentsPath = () => collection(db, 'artifacts', appId, 'public', 'data', 'comments');
+        const getNotifPath = (uid) => collection(db, 'artifacts', appId, 'users', uid, 'notifications');
 
         // --- DOM Elements ---
         const gameListCards = document.getElementById('game-list-cards');
@@ -410,12 +432,7 @@
                 });
             } else if (viewBtn) {
                  const gameId = viewBtn.dataset.gameId;
-                 const gameRef = doc(db, "spielrunden", gameId);
-                 const docSnap = await getDoc(gameRef);
-                 if (docSnap.exists()) {
-                     renderSharedQuestModal(docSnap.data(), docSnap.id);
-                     showModal(sharedQuestModal);
-                 }
+                 openQuestDetail(gameId);
             }
         });
 
@@ -441,10 +458,30 @@
         document.getElementById('cancel-add-game').addEventListener('click', () => hideModal(addEditGameModal));
         document.getElementById('close-auth-modal').addEventListener('click', () => hideModal(authModal));
         document.getElementById('close-account-modal').addEventListener('click', () => hideModal(accountModal));
-        document.getElementById('close-imprint-modal').addEventListener('click', () => hideModal(imprintModal));
-        document.getElementById('close-privacy-modal').addEventListener('click', () => hideModal(privacyModal));
-        document.getElementById('imprint-link').addEventListener('click', (e) => { e.preventDefault(); showModal(imprintModal); });
-        document.getElementById('privacy-link').addEventListener('click', (e) => { e.preventDefault(); showModal(privacyModal); });
+        
+        // Legal Link Listeners
+        document.getElementById('imprint-link').addEventListener('click', (e) => { e.preventDefault(); showLegalModal('Impressum'); });
+        document.getElementById('privacy-link').addEventListener('click', (e) => { e.preventDefault(); showLegalModal('Datenschutz'); });
+
+        function showLegalModal(type) {
+            const modal = document.getElementById('legal-modal');
+            const title = document.getElementById('legal-title');
+            const content = document.getElementById('legal-content');
+            
+            if (type === 'Impressum') {
+                title.textContent = 'Impressum';
+                content.innerHTML = `
+                    <h3 class="font-semibold text-slate-100 text-base">Angaben gemäß § 5 ECG</h3>
+                    <p>Dipl.-Ing. Ing. Andreas E. Neuhold, BSc.<br>Haushoferstraße 25<br>4020 Linz<br>Österreich</p>
+                    <h3 class="font-semibold text-slate-100 text-base mt-4">Kontakt</h3>
+                    <p>Telefon: +43 677 624 639 01<br>E-Mail: andreas.neuhold@gmail.com</p>
+                `;
+            } else {
+                title.textContent = 'Datenschutzerklärung';
+                content.innerHTML = `<p>Der Schutz deiner persönlichen Daten ist uns wichtig. Deine Daten (Anzeigename, E-Mail) werden ausschließlich zur Organisation der Spielrunden verwendet.</p>`;
+            }
+            showModal(modal);
+        }
 
         document.getElementById('delete-game-btn').addEventListener('click', async () => {
             const gameId = document.getElementById('edit-game-id').value;
@@ -512,7 +549,6 @@
                 btn.disabled = false;
             }
         });
-
 
         // Auth Modal Logic
         document.querySelectorAll('.auth-tab').forEach(tab => {
@@ -698,7 +734,7 @@
                 const valB = b[sortConfig.key].toMillis();
                 return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
             });
-           
+            
             const totalPages = Math.ceil(filteredQuests.length / ITEMS_PER_PAGE);
             if (currentPage > totalPages) currentPage = totalPages || 1;
             const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -813,6 +849,26 @@
         });
 
 
+        // --- Community Listeners ---
+        function setupCommunityListeners() {
+            onSnapshot(getCommentsPath(), (snap) => {
+                allComments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                applyAllTransformsAndRender();
+                const modal = document.getElementById('shared-quest-modal');
+                if (!modal.classList.contains('hidden')) {
+                    const activeId = sharedQuestContent.dataset.questId;
+                    if (activeId) renderComments(activeId);
+                }
+            });
+
+            if (currentUser && !currentUser.isAnonymous) {
+                onSnapshot(getNotifPath(currentUser.uid), (snap) => {
+                    allNotifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderNotifications();
+                });
+            }
+        }
+
         onAuthStateChanged(auth, async (user) => {
             if (verificationCheckInterval) clearInterval(verificationCheckInterval);
             const wasJustLoggedIn = !currentUser && user;
@@ -824,27 +880,15 @@
             updateSideMenu(!!user);
             listenToGames(); 
 
+            if (user) setupCommunityListeners();
+
             if (initialSharedQuestId) {
                 const questId = initialSharedQuestId;
                 initialSharedQuestId = null; 
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.delete('quest');
                 window.history.replaceState({}, document.title, newUrl.href);
-                const questRef = doc(db, "spielrunden", questId);
-                try {
-                    const docSnap = await getDoc(questRef);
-                    if (docSnap.exists()) {
-                        renderSharedQuestModal(docSnap.data(), docSnap.id);
-                        showModal(sharedQuestModal);
-                    }
-                } catch (error) { console.error("Error fetching shared quest:", error); }
-            } else if (wasJustLoggedIn && !sharedQuestModal.classList.contains('hidden')) {
-                const questId = sharedQuestContent.dataset.questId;
-                if (questId) {
-                    const questRef = doc(db, "spielrunden", questId);
-                    const docSnap = await getDoc(questRef);
-                    if (docSnap.exists()) renderSharedQuestModal(docSnap.data(), docSnap.id);
-                }
+                openQuestDetail(questId);
             }
 
             if (user && !user.emailVerified) {
@@ -877,75 +921,86 @@
                     </div>
                     <nav class="flex flex-col space-y-2">
                         <a href="#" id="account-btn" class="p-2 rounded-md hover:bg-slate-700">Mein Konto</a>
-                        <a href="anleitung.html" class="p-2 rounded-md hover:bg-slate-700">Anleitung</a>
-                        <a href="faq.html" class="p-2 rounded-md hover:bg-slate-700">FAQ</a>
-                        <div class="border-t border-slate-700 my-2"></div>
                         <a href="#" id="imprint-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Impressum</a>
                         <a href="#" id="privacy-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Datenschutz</a>
                         <a href="#" id="logout-btn" class="p-2 rounded-md hover:bg-slate-700 border-t border-slate-700 mt-2 pt-3">Ausloggen</a>
                     </nav>
+                    <div id="notifications-area" class="mt-8 border-t border-slate-700 pt-6">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Mitteilungen</h4>
+                        <div id="notifications-list" class="space-y-3"></div>
+                    </div>
                 `;
             } else {
                 menuHTML += `
                      <h2 class="text-xl font-bold mb-6">Menü</h2>
                      <nav class="flex flex-col space-y-2">
                          <a href="#" id="login-register-btn" class="p-2 rounded-md hover:bg-slate-700">Login / Registrieren</a>
-                         <a href="anleitung.html" class="p-2 rounded-md hover:bg-slate-700">Anleitung</a>
-                         <a href="faq.html" class="p-2 rounded-md hover:bg-slate-700">FAQ</a>
-                         <div class="border-t border-slate-700 my-2"></div>
                          <a href="#" id="imprint-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Impressum</a>
                          <a href="#" id="privacy-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Datenschutz</a>
                     </nav>
                 `;
             }
             sideMenuContent.innerHTML = menuHTML;
-
             document.getElementById('close-menu-btn').addEventListener('click', closeMenu);
-            const handleMenuLinkClick = (id, modal) => {
-                sideMenuContent.querySelector(id)?.addEventListener('click', (e) => { e.preventDefault(); showModal(modal); closeMenu(); });
-            };
-            handleMenuLinkClick('#imprint-menu-link', imprintModal);
-            handleMenuLinkClick('#privacy-menu-link', privacyModal);
-
+            
             if(isLoggedIn) {
-                sideMenuContent.querySelector('#logout-btn').addEventListener('click', (e) => { e.preventDefault(); signOut(auth); closeMenu(); });
-                sideMenuContent.querySelector('#account-btn').addEventListener('click', (e) => { 
+                document.getElementById('logout-btn').addEventListener('click', (e) => { e.preventDefault(); signOut(auth); closeMenu(); });
+                document.getElementById('account-btn').addEventListener('click', (e) => { 
                     e.preventDefault(); 
                     document.getElementById('account-name').textContent = currentUser.displayName; 
                     document.getElementById('account-email').textContent = currentUser.email;
-                    document.getElementById('request-deletion-btn').disabled = false;
-                    document.getElementById('deletion-feedback').textContent = '';
                     showModal(accountModal); 
                     closeMenu(); 
                 });
+                renderNotifications();
             } else {
-                sideMenuContent.querySelector('#login-register-btn').addEventListener('click', (e) => { e.preventDefault(); showModal(authModal); closeMenu(); });
+                document.getElementById('login-register-btn').addEventListener('click', (e) => { e.preventDefault(); showModal(authModal); closeMenu(); });
+            }
+            
+            document.getElementById('imprint-menu-link').onclick = () => { showLegalModal('Impressum'); closeMenu(); };
+            document.getElementById('privacy-menu-link').onclick = () => { showLegalModal('Datenschutz'); closeMenu(); };
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notifications-list');
+            const badge = document.getElementById('notif-badge');
+            if (!list) return;
+
+            const unread = allNotifications.filter(n => !n.read).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            
+            if (unread.length > 0) {
+                badge.classList.remove('hidden');
+                list.innerHTML = unread.map(n => `
+                    <div onclick="window.openQuestDetail('${n.questId}')" class="bg-slate-700/50 p-3 rounded-lg border-l-4 border-cyan-500 cursor-pointer hover:bg-slate-700">
+                        <p class="text-xs font-bold text-cyan-300">${n.userName} hat kommentiert:</p>
+                        <p class="text-[10px] text-slate-400 truncate mt-1">${escapeHTML(n.questName)}</p>
+                    </div>
+                `).join('');
+            } else {
+                badge.classList.add('hidden');
+                list.innerHTML = '<p class="text-slate-600 italic text-xs">Keine neuen Meldungen.</p>';
             }
         }
        
         let unsubscribeFromGames = null;
         function listenToGames() { 
             if (unsubscribeFromGames) unsubscribeFromGames(); 
-            const cutoffDate = new Date(new Date().getTime() - 3 * 60 * 60 * 1000);
+            const cutoffDate = new Date(new Date().getTime() - 3 * 60 * 1000 * 60);
             const q = query(collection(db, "spielrunden"), where("dateTime", ">=", Timestamp.fromDate(cutoffDate)), orderBy("dateTime", "asc")); 
             
             unsubscribeFromGames = onSnapshot(q, (snapshot) => { 
                 loadingIndicator.style.display = 'none';
                 allQuests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 applyAllTransformsAndRender();
-            }, (error) => { 
-                console.error("Firestore Error:", error); 
-                loadingIndicator.innerHTML = '<p class="text-red-400 text-center col-span-full">Fehler beim Laden der Quests.</p>'; 
             }); 
         }
        
         function renderGameCard(doc) {
             const game = doc.data(); 
             const gameId = doc.id;
+            const qComments = allComments.filter(c => c.questId === gameId);
             const isCreator = currentUser?.uid === game.creatorId; 
             const isParticipant = currentUser && game.participants.some(p => p.uid === currentUser.uid); 
-            const participantsCount = game.participants.length; 
-            const isFull = participantsCount >= game.totalSeats; 
             const isCancelled = game.cancelled || false; 
             const gameDate = game.dateTime.toDate(); 
             const formattedDate = gameDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }); 
@@ -965,180 +1020,173 @@
                         <div class="absolute top-4 right-4 flex items-center gap-2 text-xl z-20">
                             <button class="share-quest-btn text-slate-500 hover:text-cyan-400" title="Quest teilen" data-game-id="${gameId}">🔗</button>
                             ${isCreator ? `
-                                <button class="edit-game-btn text-slate-500 hover:text-cyan-400" title="${isCancelled ? 'Verwalten' : 'Bearbeiten'}" data-game-id="${gameId}">✏️</button>
-                                ${!isCancelled ? `<button class="cancel-game-btn text-slate-500 hover:text-red-400" title="Absagen" data-game-id="${gameId}">⨷</button>` : ''}
+                                <button class="edit-game-btn text-slate-500 hover:text-cyan-400" title="Bearbeiten" data-game-id="${gameId}">✏️</button>
                             ` : ''}
                         </div>
                     </div>
-                    <div class="flex items-center text-slate-400 mb-3 text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
-                        <span>${escapeHTML(game.location)}</span>
-                    </div>
-                     <div class="flex items-center text-slate-300 mb-4 text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg>
-                        <span>${formattedDate}, ${formattedTime} Uhr ${game.duration ? `(ca. ${game.duration} Min.)` : ''}</span>
-                    </div>
+                    <div class="flex items-center text-slate-400 mb-3 text-sm">📍 ${escapeHTML(game.location)}</div>
+                    <div class="flex items-center text-slate-300 mb-4 text-sm">🕒 ${formattedDate}, ${formattedTime} Uhr</div>
                     <div class="flex flex-wrap mb-4">${tagsHTML}</div>
                 </div>
-                <div class="border-t border-slate-700 pt-4 mt-auto ${isCancelled ? 'opacity-50' : ''}">
+                <div class="border-t border-slate-700 pt-4 mt-auto">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-3">
-                            <div class="flex items-center text-slate-300">
-                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 1 1 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1Zm0 0h6v-1a6 6 0 0 0-9-5.197M15 21a6 6 0 0 0-9-5.197m0 0A5.995 5.995 0 0 0 12 12a5.995 5.995 0 0 0-3-5.197M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg>
-                                 <span class="${isFull ? 'text-red-400' : 'text-green-400'} font-semibold">${participantsCount}/${game.totalSeats}</span>
-                            </div>
-                            <div class="flex -space-x-2 overflow-hidden">
-                                 ${game.participants.slice(0, 3).map(p => `<span class="inline-block h-6 w-6 rounded-full bg-slate-600 ring-2 ring-slate-800 text-center leading-6 text-[10px]" title="${escapeHTML(p.displayName)}">${escapeHTML(p.displayName).substring(0, 2).toUpperCase()}</span>`).join('')}
-                                 ${game.participants.length > 3 ? `<span class="flex items-center justify-center h-6 w-6 rounded-full bg-slate-700 ring-2 ring-slate-800 text-[10px] font-medium text-slate-400">+${game.participants.length - 3}</span>` : ''}
+                            <span class="${game.participants.length >= game.totalSeats ? 'text-red-400' : 'text-green-400'} font-semibold">${game.participants.length}/${game.totalSeats}</span>
+                            <div class="flex items-center gap-1 text-xs text-slate-500">
+                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" /></svg>
+                                 <span>${qComments.length}</span>
                             </div>
                         </div>
-                        <div>
-                            <button class="join-leave-btn font-semibold py-2 px-4 rounded-lg transition text-sm ${isCancelled ? 'bg-slate-700 text-slate-500' : (isParticipant ? 'bg-amber-600 hover:bg-amber-700' : (isFull && !isParticipant ? 'bg-slate-700 text-slate-500' : 'bg-cyan-500 hover:bg-cyan-600'))}" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>
-                                ${isCancelled ? 'Abgesagt' : (isParticipant ? 'Verlassen' : (isFull ? 'Voll' : 'Dabei!'))}
-                            </button>
-                        </div>
+                        <button class="join-leave-btn font-semibold py-2 px-4 rounded-lg text-sm bg-cyan-500">Details</button>
                     </div>
                 </div>
             `;
             return card;
         }
 
-        function openEditModal(doc) {
-            const game = doc.data();
-            addEditGameForm.reset();
-            document.getElementById('edit-game-id').value = doc.id;
-            document.getElementById('game-name').value = game.gameName;
-
-            const locationSelect = document.getElementById('location-type');
-            const customLocationInput = document.getElementById('custom-location');
-            const isPredefinedLocation = Array.from(locationSelect.options).some(opt => opt.value === game.location);
-            if (isPredefinedLocation) {
-                locationSelect.value = game.location;
-                customLocationContainer.classList.add('hidden');
-            } else {
-                locationSelect.value = 'other';
-                customLocationContainer.classList.remove('hidden');
-                customLocationInput.value = game.location;
+        async function openQuestDetail(id) {
+            const q = allQuests.find(item => item.id === id);
+            if (!q) {
+                const docSnap = await getDoc(doc(db, "spielrunden", id));
+                if (docSnap.exists()) renderSharedQuestModal(docSnap.data(), id);
+                else showToast("Quest nicht gefunden.");
+                return;
             }
-
-            const gameDate = game.dateTime.toDate();
-            document.getElementById('game-date').value = `${gameDate.getFullYear()}-${String(gameDate.getMonth() + 1).padStart(2, '0')}-${String(gameDate.getDate()).padStart(2, '0')}`;
-            document.getElementById('game-time').value = gameDate.toTimeString().slice(0, 5);
-            document.getElementById('total-seats').value = game.totalSeats;
-            document.getElementById('game-duration').value = game.duration || '';
-            document.querySelectorAll('#tags-container input[type="checkbox"]').forEach(cb => {
-                cb.checked = game.tags?.includes(cb.value);
-            });
-            document.getElementById('organizer-participates').checked = game.participants.some(p => p.uid === game.creatorId);
-
-            const isCancelled = game.cancelled || false;
-            document.querySelectorAll('#add-edit-game-form *:not(button)').forEach(el => el.disabled = isCancelled);
-            document.getElementById('submit-btn').disabled = isCancelled;
-            document.getElementById('modal-title').textContent = isCancelled ? 'Quest reaktivieren' : 'Quest bearbeiten';
-            document.getElementById('delete-game-btn').classList.toggle('hidden', isCancelled);
-            document.getElementById('reactivate-game-btn').classList.toggle('hidden', !isCancelled);
-            
-            showModal(addEditGameModal);
+            renderSharedQuestModal(q, id);
+            showModal(sharedQuestModal);
         }
 
         function renderSharedQuestModal(game, gameId) {
             const isCreator = currentUser?.uid === game.creatorId;
             const isParticipant = currentUser && game.participants.some(p => p.uid === currentUser.uid);
-            const participantsCount = game.participants.length;
-            const isFull = participantsCount >= game.totalSeats;
-            const isCancelled = game.cancelled || false;
-            const gameDate = game.dateTime.toDate();
-            const formattedDate = gameDate.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-            const formattedTime = gameDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
-            let participantsHTML = game.participants.map(p => `
-                 <span class="bg-slate-700 text-slate-300 text-sm font-medium pl-2.5 pr-1.5 py-1 rounded-full flex items-center gap-1">
-                     ${escapeHTML(p.displayName)}
-                     ${isCreator && currentUser?.uid !== p.uid ? `<button class="remove-participant-btn text-red-400 hover:text-red-200" data-game-id="${gameId}" data-participant-uid="${p.uid}" title="Teilnehmer entfernen">&times;</button>` : ''}
-                 </span>`).join('') || '<p class="text-slate-500 text-sm">Noch keine Teilnehmer.</p>';
-            let tagsHTML = (game.tags || []).map(tag => `<span class="bg-cyan-800 text-cyan-200 text-xs font-medium mr-2 mb-2 px-2.5 py-0.5 rounded-full">${escapeHTML(tag)}</span>`).join('');
 
             sharedQuestContent.dataset.questId = gameId;
+            editModeCommentId = null;
+
             sharedQuestContent.innerHTML = `
-                <button id="close-shared-quest-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
+                <button onclick="document.getElementById('shared-quest-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
                 <h3 class="text-3xl font-bold text-cyan-400 mb-2">${escapeHTML(game.gameName)}</h3>
-                <p class="text-slate-400 mb-4">Organisiert von <span class="font-semibold">${escapeHTML(game.creatorName)}</span></p>
-                <div class="space-y-4 mb-6">
-                    <div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg><span>${escapeHTML(game.location)}</span></div>
-                    <div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg><span>${formattedDate} um ${formattedTime} Uhr</span></div>
-                    ${game.duration ? `<div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path></svg><span>ca. ${game.duration} Minuten</span></div>` : ''}
-                    <div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 1 1 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1Zm0 0h6v-1a6 6 0 0 0-9-5.197M15 21a6 6 0 0 0-9-5.197m0 0A5.995 5.995 0 0 0 12 12a5.995 5.995 0 0 0-3-5.197M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg><span class="${isFull ? 'text-red-400' : 'text-green-400'} font-semibold">${isFull ? 'Runde ist voll' : `${game.totalSeats - participantsCount} von ${game.totalSeats} Plätzen frei`}</span></div>
+                <p class="text-slate-400 mb-6">Organisiert von <span class="font-semibold">${escapeHTML(game.creatorName)}</span></p>
+                <div class="space-y-4 mb-6 text-sm text-slate-300">
+                    <p>📍 ${escapeHTML(game.location)}</p>
+                    <p>🕒 ${game.dateTime.toDate().toLocaleString('de-DE')}</p>
+                    <p class="${game.participants.length >= game.totalSeats ? 'text-red-400' : 'text-green-400'} font-bold">
+                        👥 ${game.participants.length}/${game.totalSeats} Plätze belegt
+                    </p>
                 </div>
-                ${tagsHTML ? `<div class="flex flex-wrap mb-4">${tagsHTML}</div>` : ''}
-                <div class="border-t border-slate-700 pt-4">
-                    <h4 class="font-semibold text-slate-300 mb-2">Teilnehmer (${participantsCount}/${game.totalSeats}):</h4>
-                    <div class="flex flex-wrap gap-2">${participantsHTML}</div>
+                <div class="mb-8">
+                    <h4 class="font-semibold text-slate-300 mb-2">Teilnehmer:</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${game.participants.map(p => `<span class="bg-slate-700 px-3 py-1 rounded-full text-xs">${escapeHTML(p.displayName)}</span>`).join('')}
+                    </div>
                 </div>
-                ${isCreator ? `<div class="mt-4 text-center"><button id="edit-from-shared-modal-btn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg transition" data-game-id="${gameId}">${isCancelled ? 'Verwalten' : 'Bearbeiten'}</button></div>` : ''}
-                <div class="mt-6">
-                    <button class="join-leave-btn w-full font-bold py-3 px-4 rounded-lg transition ${isCancelled ? 'bg-slate-700 text-slate-500' : (isParticipant ? 'bg-amber-600 hover:bg-amber-700' : (isFull ? 'bg-slate-700 text-slate-500' : 'bg-cyan-500 hover:bg-cyan-600'))}" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>${isCancelled ? 'Abgesagt' : (isParticipant ? 'Teilnahme zurückziehen' : (isFull ? 'Voll' : 'An Quest teilnehmen'))}</button>
+                <button onclick="window.toggleJoin('${gameId}')" class="w-full ${isParticipant ? 'bg-amber-600' : 'bg-cyan-500'} py-3 rounded-lg font-bold mb-8">
+                    ${isParticipant ? 'Teilnahme absagen' : 'Quest beitreten!'}
+                </button>
+
+                <div class="border-t border-slate-700 pt-6">
+                    <h3 class="text-xl font-bold mb-4 flex justify-between items-center">
+                        Diskussion <span id="modal-comment-count" class="text-xs bg-slate-700 px-2 py-0.5 rounded text-cyan-400">0</span>
+                    </h3>
+                    <div id="comments-list" class="space-y-4 mb-6 pr-2 max-h-60 overflow-y-auto"></div>
+                    <div id="comment-editor-area"></div>
+                </div>
+            `;
+            renderComments(gameId);
+        }
+
+        // Community Logic
+        function renderComments(questId) {
+            const list = document.getElementById('comments-list');
+            const qComments = allComments.filter(c => c.questId === questId).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            document.getElementById('modal-comment-count').textContent = qComments.length;
+
+            if (qComments.length === 0) {
+                list.innerHTML = '<p class="text-slate-500 italic text-sm py-4">Noch keine Kommentare.</p>';
+            } else {
+                list.innerHTML = qComments.map(c => `
+                    <div class="bg-slate-900/30 p-3 rounded-lg border border-slate-700/30 relative group comment-item">
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span class="font-bold text-cyan-400">${escapeHTML(c.userName)}</span>
+                            <span class="text-slate-500">${c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleTimeString() : '...'}</span>
+                        </div>
+                        <p class="text-sm text-slate-200 whitespace-pre-wrap">${escapeHTML(c.text)}</p>
+                        ${currentUser && c.userId === currentUser.uid ? `
+                            <div class="comment-actions absolute top-2 right-2 flex gap-2">
+                                <button onclick="window.startEditComment('${c.id}', '${questId}')" class="text-[10px] text-slate-500 hover:text-cyan-400">Edit</button>
+                                <button onclick="window.deleteComment('${c.id}')" class="text-[10px] text-slate-500 hover:text-red-400">Lösch</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+                list.scrollTop = list.scrollHeight;
+            }
+            renderCommentEditor(questId);
+        }
+
+        function renderCommentEditor(questId) {
+            const area = document.getElementById('comment-editor-area');
+            if (!currentUser || currentUser.isAnonymous) {
+                area.innerHTML = '<div class="text-center text-sm text-slate-500 p-4 bg-slate-800/50 rounded">Bitte einloggen, um zu kommentieren.</div>';
+                return;
+            }
+            const activeText = editModeCommentId ? allComments.find(c => c.id === editModeCommentId)?.text || '' : '';
+            area.innerHTML = `
+                <div class="relative">
+                    <textarea id="comment-input" rows="2" class="w-full bg-slate-700 p-3 rounded-lg text-sm border border-slate-600 focus:border-cyan-500 outline-none transition" placeholder="Schreibe einen Kommentar...">${activeText}</textarea>
+                    <div class="flex gap-2 mt-2">
+                        ${['👋', '🎲', '👍', '🔥', '😂', '⚔️'].map(e => `<span onclick="window.insertEmoji('${e}')" class="emoji-btn text-lg">${e}</span>`).join('')}
+                    </div>
+                    <div class="flex justify-end gap-2 mt-2">
+                        ${editModeCommentId ? `<button onclick="window.cancelEdit('${questId}')" class="text-xs bg-slate-600 px-3 py-1 rounded">Abbruch</button>` : ''}
+                        <button onclick="window.sendComment('${questId}')" class="bg-cyan-500 px-5 py-1.5 rounded-lg text-sm font-bold">
+                            ${editModeCommentId ? 'Speichern' : 'Senden'}
+                        </button>
+                    </div>
                 </div>
             `;
         }
 
-        sharedQuestModal.addEventListener('click', async (e) => {
-            if (e.target.id === 'close-shared-quest-modal' || e.target === sharedQuestModal) {
-                hideModal(sharedQuestModal); return;
-            }
-            const removeParticipantBtn = e.target.closest('.remove-participant-btn');
-            const joinLeaveBtn = e.target.closest('.join-leave-btn');
-            const editFromSharedBtn = e.target.closest('#edit-from-shared-modal-btn');
-
-            if (editFromSharedBtn) {
-                const gameId = editFromSharedBtn.dataset.gameId;
-                const gameRef = doc(db, "spielrunden", gameId);
-                const docSnap = await getDoc(gameRef);
-                if (docSnap.exists()) { hideModal(sharedQuestModal); openEditModal(docSnap); }
-                return;
-            }
-            
-            if (removeParticipantBtn) {
-                const gameId = removeParticipantBtn.dataset.gameId;
-                const participantUid = removeParticipantBtn.dataset.participantUid;
-                showConfirmModal('Bist du sicher, dass du diesen Teilnehmer entfernen möchtest?', async () => {
-                     const gameRef = doc(db, "spielrunden", gameId);
-                     try {
-                         const docSnap = await getDoc(gameRef);
-                         if (docSnap.exists()) {
-                             const newParticipants = docSnap.data().participants.filter(p => p.uid !== participantUid);
-                             await updateDoc(gameRef, { participants: newParticipants });
-                             renderSharedQuestModal( (await getDoc(gameRef)).data(), gameId );
-                         }
-                     } catch (error) { console.error("Fehler beim Entfernen:", error); showToast("Fehler beim Entfernen."); }
-                });
-            } else if (joinLeaveBtn) {
-                if (!currentUser) { hideModal(sharedQuestModal); showModal(authModal); return; }
-                const gameId = joinLeaveBtn.dataset.gameId;
-                joinLeaveBtn.disabled = true;
-                const gameRef = doc(db, "spielrunden", gameId);
-                try {
-                    const docSnap = await getDoc(gameRef);
-                    if (docSnap.exists()) {
-                        const gameData = docSnap.data();
-                        const isParticipant = gameData.participants.some(p => p.uid === currentUser.uid);
-                        let newParticipants;
-                        if (isParticipant) {
-                            newParticipants = gameData.participants.filter(p => p.uid !== currentUser.uid);
-                        } else {
-                            if (gameData.participants.length < gameData.totalSeats) {
-                                newParticipants = [...gameData.participants, { uid: currentUser.uid, displayName: currentUser.displayName }];
-                            } else {
-                                showToast("Diese Runde ist bereits voll."); return;
-                            }
-                        }
-                        await updateDoc(gameRef, { participants: newParticipants });
-                        renderSharedQuestModal((await getDoc(gameRef)).data(), gameId);
+        window.sendComment = async (questId) => {
+            const text = document.getElementById('comment-input').value.trim();
+            if (!text) return;
+            try {
+                if (editModeCommentId) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comments', editModeCommentId), { text, updatedAt: serverTimestamp() });
+                    editModeCommentId = null;
+                } else {
+                    await addDoc(getCommentsPath(), {
+                        questId, userId: currentUser.uid, userName: currentUser.displayName || 'Held',
+                        text, createdAt: serverTimestamp()
+                    });
+                    const q = allQuests.find(i => i.id === questId);
+                    if (q && q.creatorId !== currentUser.uid) {
+                        await addDoc(getNotifPath(q.creatorId), {
+                            questId, questName: q.gameName, userName: currentUser.displayName,
+                            read: false, createdAt: serverTimestamp()
+                        });
                     }
-                } catch (error) { console.error("Fehler beim Beitreten/Verlassen:", error); }
-            }
-        });
+                }
+                renderComments(questId);
+            } catch (e) { showToast("Fehler beim Senden."); }
+        };
+
+        window.toggleJoin = async (id) => {
+            if (!currentUser) { showModal(authModal); return; }
+            const q = allQuests.find(i => i.id === id);
+            const isP = q.participants.some(p => p.uid === currentUser.uid);
+            let newList = isP ? q.participants.filter(p => p.uid !== currentUser.uid) : [...q.participants, { uid: currentUser.uid, displayName: currentUser.displayName }];
+            if (!isP && q.participants.length >= q.totalSeats) return showToast("Runde leider voll!");
+            await updateDoc(doc(db, "spielrunden", id), { participants: newList });
+            openQuestDetail(id);
+        };
+
+        window.startEditComment = (id, qId) => { editModeCommentId = id; renderCommentEditor(qId); document.getElementById('comment-input').focus(); };
+        window.cancelEdit = (qId) => { editModeCommentId = null; renderCommentEditor(qId); };
+        window.deleteComment = async (id) => { if (confirm("Löschen?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comments', id)); };
+        window.insertEmoji = (e) => { const i = document.getElementById('comment-input'); i.value += e; i.focus(); };
+        window.openQuestDetail = openQuestDetail;
 
     </script>
 </body>
 </html>
-
