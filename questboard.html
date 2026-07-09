@@ -3,231 +3,422 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Questboard</title>
-    <script src="https://cdn-tailwindcss.vercel.app/"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Questboard · BoardOrbit</title>
+    <link rel="stylesheet" href="codelab365.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .modal-enter, .toast-enter { animation: fadeIn 0.3s ease-out; }
-        .modal-leave, .toast-leave { animation: fadeOut 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
-        .filter-btn.active { background-color: #06b6d4; color: white; }
-        .highlight-quest {
-            transition: box-shadow 0.5s ease-in-out;
-            box-shadow: 0 0 20px 5px #06b6d4;
+        /* =========================================================
+           qb- : Questboard-spezifische Ergänzungen zum codeLAB365
+           Design-System. Nutzt ausschließlich die cl-* Tokens, damit
+           Light/Dark-Mode und Theming automatisch funktionieren.
+           ========================================================= */
+
+        /* Kopfzeile: Marke links, Aktionen rechts */
+        .qb-brand-block { display: flex; flex-direction: column; gap: .1rem; }
+        .qb-tagline { margin: 0; font-size: .85rem; max-width: 46ch; }
+        .qb-header-actions { display: flex; align-items: center; gap: var(--cl-space-2); }
+
+        .qb-icon-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px; padding: 0; border-radius: var(--cl-radius-sm);
         }
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            filter: invert(0.6) brightness(1.5);
+        .qb-icon-sm { width: 1rem; height: 1rem; }
+        .qb-icon-md { width: 1.15rem; height: 1.15rem; }
+        .qb-icon-lg { width: 1.4rem; height: 1.4rem; }
+
+        /* Disabled-Zustand, den das Grunddesign nicht abdeckt */
+        :where(button, input, select, .cl-btn, .cl-chip):disabled,
+        .cl-btn[disabled] { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+        /* Seitenmenü */
+        .qb-overlay {
+            position: fixed; inset: 0; z-index: 45;
+            background: color-mix(in srgb, black 45%, transparent);
         }
-        #toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100; }
-        .toast { background-color: #06b6d4; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .qb-side-menu {
+            position: fixed; top: 0; right: 0; height: 100%; width: min(320px, 88vw);
+            background: var(--cl-surface); border-left: 1px solid var(--cl-line);
+            box-shadow: var(--cl-shadow-lg); z-index: 50; padding: var(--cl-space-4);
+            transform: translateX(100%); transition: transform .28s ease;
+            overflow-y: auto;
+        }
+        .qb-side-menu.qb-open { transform: translateX(0); }
+        .qb-menu-nav { display: flex; flex-direction: column; gap: .15rem; margin-top: var(--cl-space-3); }
+        .qb-menu-link {
+            padding: .65rem .75rem; border-radius: var(--cl-radius-sm); text-decoration: none;
+            color: var(--cl-text); font-weight: 500;
+        }
+        .qb-menu-link:hover { background: var(--cl-surface-2); }
+        .qb-menu-link--small { font-size: .85rem; color: var(--cl-muted); }
+        .qb-menu-divider { border-top: 1px solid var(--cl-line); margin: var(--cl-space-2) 0; }
+
+        /* Filterleiste */
+        .qb-filter-bar {
+            display: flex; flex-wrap: wrap; gap: var(--cl-space-2); align-items: center;
+            justify-content: center; margin-block: var(--cl-space-4);
+        }
+        .qb-filter-inputs { display: flex; flex-wrap: wrap; gap: var(--cl-space-2); }
+        .qb-filter-inputs .cl-input { width: auto; min-width: 190px; }
+        .qb-date-wrap { position: relative; }
+        .qb-clear-date {
+            position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--cl-muted); font-size: 1.2rem;
+            line-height: 1; cursor: pointer; padding: 0;
+        }
+        .qb-clear-date:hover { color: var(--cl-text); }
+        .qb-chip-row { display: flex; gap: .4rem; padding: .3rem; background: var(--cl-surface-2);
+            border-radius: var(--cl-radius-pill); border: 1px solid var(--cl-line); }
+        .qb-chip-row .cl-chip { padding: .4rem .7rem; }
+        .qb-location-bar {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem;
+            padding: var(--cl-space-2); background: var(--cl-surface-2);
+            border: 1px solid var(--cl-line); border-radius: var(--cl-radius);
+            margin-bottom: var(--cl-space-4);
+        }
+
+        /* Verifizierungs-Banner */
+        .qb-banner {
+            border: 1px solid color-mix(in srgb, var(--cl-warn) 55%, transparent);
+            background: color-mix(in srgb, var(--cl-warn) 14%, transparent);
+            color: var(--cl-warn); padding: .85rem 1rem; border-radius: var(--cl-radius);
+            text-align: center; margin-bottom: var(--cl-space-3);
+        }
+        .qb-banner .cl-btn { margin-left: .4rem; }
+
+        /* Quest-Grid & Karten */
+        .qb-quest-grid { display: grid; gap: var(--cl-space-3); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        .qb-day-heading { grid-column: 1 / -1; margin-top: var(--cl-space-4); color: var(--cl-muted);
+            font-family: var(--cl-font-display); font-weight: 600; font-size: 1.05rem; }
+        .qb-empty { grid-column: 1 / -1; text-align: center; color: var(--cl-muted); padding: var(--cl-space-4) 0; }
+
+        .qb-quest-card { position: relative; display: flex; flex-direction: column; cursor: pointer;
+            transition: transform .15s ease, box-shadow .15s ease; }
+        .qb-quest-card:hover { transform: translateY(-2px); box-shadow: var(--cl-shadow-lg); }
+        .qb-quest-card__body { flex-grow: 1; }
+        .qb-quest-card__top { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
+        .qb-quest-card__title { margin: 0; padding-right: 4.5rem; }
+        .qb-quest-card__actions { position: absolute; top: var(--cl-space-3); right: var(--cl-space-3);
+            display: flex; gap: .4rem; z-index: 5; }
+        .qb-meta-row { display: flex; align-items: center; gap: .5rem; color: var(--cl-muted); font-size: .9rem; margin: .3rem 0; }
+        .qb-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+        .qb-tag {
+            font-size: .75rem; font-weight: 500; padding: .28rem .65rem; border-radius: var(--cl-radius-pill);
+            background: color-mix(in srgb, var(--cl-signal) 16%, var(--cl-surface));
+            color: var(--cl-navy-600); border: 1px solid color-mix(in srgb, var(--cl-signal) 30%, transparent);
+        }
+        @media (prefers-color-scheme: dark) { .qb-tag { color: var(--cl-signal); } }
+        [data-theme="dark"] .qb-tag { color: var(--cl-signal); }
+
+        .qb-card-footer { border-top: 1px solid var(--cl-line); padding-top: var(--cl-space-2); margin-top: auto; }
+        .qb-footer-row { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+        .qb-seats { display: flex; align-items: center; gap: .5rem; }
+        .qb-avatars { display: flex; }
+        .qb-avatar {
+            width: 26px; height: 26px; border-radius: 50%; background: var(--cl-surface-2);
+            border: 2px solid var(--cl-surface); display: flex; align-items: center; justify-content: center;
+            font-size: .6rem; font-weight: 600; color: var(--cl-muted); margin-left: -8px;
+        }
+        .qb-avatars .qb-avatar:first-child { margin-left: 0; }
+
+        .qb-cancelled-overlay {
+            position: absolute; inset: 0; z-index: 10; border-radius: var(--cl-radius);
+            display: flex; align-items: center; justify-content: center;
+            background: color-mix(in srgb, var(--cl-err) 62%, transparent);
+        }
+        .qb-cancelled-overlay span {
+            font-size: 1.3rem; font-weight: 700; color: #fff; transform: rotate(-8deg);
+            font-family: var(--cl-font-display);
+        }
+        .qb-dimmed { opacity: .45; }
+
+        .cl-btn--warn { --_bg: var(--cl-warn); --_fg: #241400; }
+        .cl-btn--warn:hover { filter: brightness(.93); }
+        .cl-btn--muted { --_bg: var(--cl-surface-2); --_fg: var(--cl-muted); --_bd: var(--cl-line); }
+
+        /* Modals */
+        .qb-modal-overlay {
+            position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+            background: color-mix(in srgb, black 55%, transparent); padding: 1rem;
+        }
+        .qb-modal { width: 100%; max-width: 30rem; position: relative; max-height: 90vh; overflow-y: auto; }
+        .qb-modal--lg { max-width: 34rem; }
+        .qb-modal--sm { max-width: 24rem; }
+        .qb-modal-close {
+            position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+            font-size: 1.6rem; line-height: 1; color: var(--cl-muted); cursor: pointer; z-index: 5;
+        }
+        .qb-modal-close:hover { color: var(--cl-text); }
+        .modal-enter { animation: qbFadeIn .22s ease-out; }
+        .modal-leave { animation: qbFadeOut .22s ease-in; }
+        @keyframes qbFadeIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+        @keyframes qbFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.96); } }
+
+        .qb-auth-tabs { display: flex; border-bottom: 1px solid var(--cl-line); margin-bottom: var(--cl-space-3); }
+        .qb-auth-tab {
+            flex: 1; padding: .6rem 0; text-align: center; background: none; border: none;
+            border-bottom: 2px solid transparent; font-weight: 600; color: var(--cl-muted); cursor: pointer;
+        }
+        .qb-auth-tab.is-active { border-bottom-color: var(--cl-signal); color: var(--cl-text); }
+        .qb-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cl-space-2); }
+        .qb-checkbox-row { display: flex; align-items: center; gap: .5rem; color: var(--cl-muted); }
+        .qb-tags-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; font-size: .9rem; }
+        .qb-tags-grid label { display: flex; align-items: center; gap: .4rem; }
+        .qb-modal-footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: var(--cl-space-3); flex-wrap: wrap; }
+        .qb-error { color: var(--cl-err); text-align: center; margin-top: var(--cl-space-2); min-height: 1.25rem; font-size: .9rem; }
+        .qb-feedback { color: var(--cl-ok); font-size: .9rem; }
+
+        .qb-legal-body { font-size: .9rem; color: var(--cl-muted); max-height: 60vh; overflow-y: auto;
+            padding-right: .5rem; }
+        .qb-legal-body h3 { color: var(--cl-text); font-size: 1rem; margin-top: var(--cl-space-3); }
+        .qb-legal-body p { margin-bottom: .8rem; }
+
+        /* Toasts */
+        #toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100;
+            display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+        .qb-toast {
+            background: var(--cl-primary); color: var(--cl-on-primary); padding: .75rem 1.4rem;
+            border-radius: var(--cl-radius-pill); box-shadow: var(--cl-shadow-lg); font-size: .9rem;
+        }
+        .toast-enter { animation: qbFadeIn .25s ease-out; }
+        .toast-leave { animation: qbFadeOut .25s ease-in; }
+
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+        [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+        @media (prefers-color-scheme: dark) { input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.7); } }
+
+        @media (max-width: 640px) {
+            .qb-header-actions .qb-coffee-label { display: none; }
+            .qb-form-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-white antialiased">
+<body>
 
     <!-- Header -->
-    <header class="bg-slate-800/70 backdrop-blur-sm sticky top-0 z-20 shadow-lg">
-        <div class="container mx-auto px-4 py-4 max-w-7xl flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-cyan-400">🎲 BoardOrbit</h1>
-                <p class="text-slate-400 mt-1">Finde Mitspieler:innen für deine nächste Brett- und Kartenspielrunde.</p>
+    <header class="cl-header">
+        <div class="cl-container cl-header__inner">
+            <div class="qb-brand-block">
+                <a href="#" class="cl-brand"><span style="font-size:1.6rem">🎲</span><span class="cl-brand__name">Board<b>Orbit</b></span></a>
+                <p class="cl-muted qb-tagline">Finde Mitspieler:innen für deine nächste Brett- und Kartenspielrunde.</p>
             </div>
-            <div class="flex items-center gap-4">
-                <a href="https://www.paypal.com/ncp/payment/Q47XPP7KQQVLQ" target="_blank" rel="noopener noreferrer" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
-                    <span>☕</span>
-                    <span class="hidden sm:inline">Kaffee ausgeben</span>
+            <div class="cl-header__spacer"></div>
+            <div class="qb-header-actions">
+                <a href="https://www.paypal.com/ncp/payment/Q47XPP7KQQVLQ" target="_blank" rel="noopener noreferrer" class="cl-btn cl-btn--signal">
+                    <span aria-hidden="true">☕</span>
+                    <span class="qb-coffee-label">Kaffee ausgeben</span>
                 </a>
-                <button id="menu-toggle-btn" class="p-2 rounded-md hover:bg-slate-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                <button id="menu-toggle-btn" class="cl-btn cl-btn--ghost qb-icon-btn" aria-label="Menü öffnen">
+                    <svg class="qb-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
             </div>
         </div>
     </header>
 
     <!-- Side Menu -->
-    <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-slate-800 shadow-2xl transform translate-x-full transition-transform z-30">
-        <div id="side-menu-content" class="p-6"></div>
+    <div id="side-menu" class="qb-side-menu">
+        <div id="side-menu-content"></div>
     </div>
-    <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden"></div>
+    <div id="menu-overlay" class="qb-overlay cl-hidden"></div>
 
     <!-- Main Content -->
-    <main id="main-content" class="container mx-auto p-4 max-w-7xl">
-        <div id="verification-banner" class="hidden bg-yellow-500/20 border border-yellow-500 text-yellow-300 px-4 py-3 rounded-lg text-center mb-4">
-            Bitte bestätige deine E-Mail-Adresse. Wir haben dir einen Link geschickt. 
-            <button id="resend-verification-btn" class="font-bold underline hover:text-white disabled:opacity-50 disabled:cursor-not-allowed">Erneut senden</button>
-            <span id="resend-feedback" class="ml-2 text-green-400"></span>
+    <main id="main-content" class="cl-container cl-section" style="padding-top: var(--cl-space-3);">
+        <div id="verification-banner" class="qb-banner cl-hidden">
+            Bitte bestätige deine E-Mail-Adresse. Wir haben dir einen Link geschickt.
+            <button id="resend-verification-btn" class="cl-btn cl-btn--ghost cl-btn--sm">Erneut senden</button>
+            <span id="resend-feedback" class="qb-feedback"></span>
         </div>
 
-        <!-- Action & Filter Buttons -->
-        <div class="my-6 flex flex-col sm:flex-row justify-center items-center gap-4">
-            <button id="add-game-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 w-full sm:w-auto order-1 sm:order-2">
+        <!-- Action & Filter Bar -->
+        <div class="qb-filter-bar">
+            <button id="add-game-btn" class="cl-btn cl-btn--signal" style="order:2;">
                 (+) Neues Quest anbieten
             </button>
-            <div class="flex flex-col lg:flex-row gap-4 w-full lg:w-auto order-2 sm:order-1">
-                <div class="flex flex-col sm:flex-row gap-4">
-                     <div class="flex flex-wrap gap-4">
-                         <input type="text" id="name-filter" placeholder="Nach Spiel suchen..." class="bg-slate-800 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full sm:w-auto" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
-                         <input type="text" id="location-filter" placeholder="Nach Ort suchen..." class="bg-slate-800 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full sm:w-auto" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
-                         <div class="relative">
-                            <input type="date" id="date-filter" class="bg-slate-800 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full sm:w-auto pr-8">
-                            <button id="clear-date-filter" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white hidden text-xl font-bold">&times;</button>
-                        </div>
-                     </div>
+            <div class="qb-filter-inputs" style="order:1;">
+                <input type="text" id="name-filter" placeholder="Nach Spiel suchen..." class="cl-input" autocomplete="off" maxlength="80" readonly onfocus="this.removeAttribute('readonly');">
+                <input type="text" id="location-filter" placeholder="Nach Ort suchen..." class="cl-input" autocomplete="off" maxlength="80" readonly onfocus="this.removeAttribute('readonly');">
+                <div class="qb-date-wrap">
+                    <input type="date" id="date-filter" class="cl-input">
+                    <button id="clear-date-filter" class="qb-clear-date cl-hidden" aria-label="Datumsfilter löschen">&times;</button>
                 </div>
-                <div id="day-filter-container" class="flex gap-2 p-1 bg-slate-800 rounded-lg">
-                    <button class="filter-btn day-filter-btn active px-2 py-1 rounded-md transition" data-day="all">Alle</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="1">Mo</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="2">Di</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="3">Mi</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="4">Do</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="5">Fr</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="6">Sa</button>
-                    <button class="filter-btn day-filter-btn px-2 py-1 rounded-md transition" data-day="0">So</button>
+                <div id="day-filter-container" class="qb-chip-row">
+                    <button class="cl-chip day-filter-btn" data-day="all" aria-pressed="true">Alle</button>
+                    <button class="cl-chip day-filter-btn" data-day="1" aria-pressed="false">Mo</button>
+                    <button class="cl-chip day-filter-btn" data-day="2" aria-pressed="false">Di</button>
+                    <button class="cl-chip day-filter-btn" data-day="3" aria-pressed="false">Mi</button>
+                    <button class="cl-chip day-filter-btn" data-day="4" aria-pressed="false">Do</button>
+                    <button class="cl-chip day-filter-btn" data-day="5" aria-pressed="false">Fr</button>
+                    <button class="cl-chip day-filter-btn" data-day="6" aria-pressed="false">Sa</button>
+                    <button class="cl-chip day-filter-btn" data-day="0" aria-pressed="false">So</button>
                 </div>
             </div>
         </div>
-        <div id="location-filter-container" class="mb-6 flex flex-wrap justify-center gap-2 p-2 bg-slate-800/50 rounded-lg">
-            <button class="filter-btn location-filter-btn active px-3 py-1 rounded-md transition" data-location="all">Alle Orte</button>
-            <button class="filter-btn location-filter-btn px-3 py-1 rounded-md transition" data-location="Genduron">Genduron</button>
-            <button class="filter-btn location-filter-btn px-3 py-1 rounded-md transition" data-location="Knobelritter">Knobelritter</button>
-            <button class="filter-btn location-filter-btn px-3 py-1 rounded-md transition" data-location="Spieleversum">Spieleversum</button>
-            <button class="filter-btn location-filter-btn px-3 py-1 rounded-md transition" data-location="Games Toys and more">Games Toys and more</button>
-            <button class="filter-btn location-filter-btn px-3 py-1 rounded-md transition" data-location="Brettspielfreunde">Brettspielfreunde</button>
+        <div id="location-filter-container" class="qb-location-bar">
+            <button class="cl-chip location-filter-btn" data-location="all" aria-pressed="true">Alle Orte</button>
+            <button class="cl-chip location-filter-btn" data-location="Genduron" aria-pressed="false">Genduron</button>
+            <button class="cl-chip location-filter-btn" data-location="Knobelritter" aria-pressed="false">Knobelritter</button>
+            <button class="cl-chip location-filter-btn" data-location="Spieleversum" aria-pressed="false">Spieleversum</button>
+            <button class="cl-chip location-filter-btn" data-location="Games Toys and more" aria-pressed="false">Games Toys and more</button>
+            <button class="cl-chip location-filter-btn" data-location="Brettspielfreunde" aria-pressed="false">Brettspielfreunde</button>
         </div>
-       
+
         <div id="quest-list-container">
-            <div id="game-list-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-            <div id="loading-indicator" class="text-center col-span-full py-10">
-                 <p class="text-slate-400 text-lg">Lade verfügbare Quests...</p>
+            <div id="game-list-cards" class="qb-quest-grid"></div>
+            <div id="loading-indicator" class="qb-empty">
+                <p>Lade verfügbare Quests...</p>
             </div>
         </div>
 
-        <div id="pagination-controls" class="mt-6 flex justify-center items-center gap-4 text-slate-400"></div>
+        <div id="pagination-controls" class="cl-flex" style="justify-content:center; margin-top: var(--cl-space-4); color: var(--cl-muted);"></div>
     </main>
-   
-    <footer class="text-center py-8 mt-8 text-slate-500 border-t border-slate-800">
-        <div class="container mx-auto px-4 max-w-5xl space-x-4">
-            <a href="#" id="imprint-link" class="hover:text-cyan-400 transition">Impressum</a>
-            <span>|</span>
-            <a href="#" id="privacy-link" class="hover:text-cyan-400 transition">Datenschutz</a>
+
+    <footer class="cl-footer">
+        <div class="cl-container cl-center">
+            <a href="#" id="imprint-link">Impressum</a>
+            <span> · </span>
+            <a href="#" id="privacy-link">Datenschutz</a>
         </div>
     </footer>
 
     <!-- All Modals -->
-    <div id="shared-quest-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div id="shared-quest-content" class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-lg m-4 modal-enter relative"></div>
+    <div id="shared-quest-modal" class="qb-modal-overlay cl-hidden">
+        <div id="shared-quest-content" class="cl-card cl-card--pad qb-modal qb-modal--lg modal-enter"></div>
     </div>
-    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md m-4 modal-enter relative">
-            <button id="close-auth-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
-            <div id="auth-tabs" class="flex border-b border-slate-700 mb-6">
-                <button data-tab="login" class="auth-tab flex-1 py-2 font-semibold border-b-2 border-cyan-500 text-white">Login</button>
-                <button data-tab="register" class="auth-tab flex-1 py-2 font-semibold border-b-2 border-transparent text-slate-400">Registrieren</button>
+
+    <div id="auth-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal modal-enter">
+            <button id="close-auth-modal" class="qb-modal-close" aria-label="Schließen">&times;</button>
+            <div id="auth-tabs" class="qb-auth-tabs">
+                <button data-tab="login" class="qb-auth-tab is-active">Login</button>
+                <button data-tab="register" class="qb-auth-tab">Registrieren</button>
             </div>
             <form id="login-form">
-                <div class="mb-4"><label for="login-email" class="block text-slate-400 mb-2">E-Mail</label><input type="email" id="login-email" class="w-full bg-slate-700 p-2 rounded-md" required autocomplete="username"></div>
-                <div class="mb-4"><label for="login-password" class="block text-slate-400 mb-2">Passwort</label><input type="password" id="login-password" class="w-full bg-slate-700 p-2 rounded-md" required autocomplete="current-password"></div>
-                <div class="text-center mb-6"><a href="#" id="forgot-password-link" class="text-sm text-cyan-400 hover:underline">Passwort vergessen?</a></div>
-                <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-lg transition-colors disabled:bg-slate-600">Einloggen</button>
+                <div class="cl-stack">
+                    <div><label for="login-email" class="cl-label">E-Mail</label><input type="email" id="login-email" class="cl-input" required autocomplete="username"></div>
+                    <div><label for="login-password" class="cl-label">Passwort</label><input type="password" id="login-password" class="cl-input" required autocomplete="current-password"></div>
+                    <p class="cl-center"><a href="#" id="forgot-password-link" style="font-size:.9rem;">Passwort vergessen?</a></p>
+                    <button type="submit" class="cl-btn cl-btn--signal" style="width:100%;">Einloggen</button>
+                </div>
             </form>
-            <form id="register-form" class="hidden">
-                 <div class="mb-4"><label for="register-name" class="block text-slate-400 mb-2">Dein Anzeigename</label><input type="text" id="register-name" class="w-full bg-slate-700 p-2 rounded-md" required></div>
-                <div class="mb-4"><label for="register-email" class="block text-slate-400 mb-2">E-Mail</label><input type="email" id="register-email" class="w-full bg-slate-700 p-2 rounded-md" required autocomplete="email"></div>
-                <div class="mb-4"><label for="register-password" class="block text-slate-400 mb-2">Passwort</label><input type="password" id="register-password" class="w-full bg-slate-700 p-2 rounded-md" required minlength="6" autocomplete="new-password"></div>
-                <div class="mb-6"><label for="register-password-confirm" class="block text-slate-400 mb-2">Passwort bestätigen</label><input type="password" id="register-password-confirm" class="w-full bg-slate-700 p-2 rounded-md" required minlength="6" autocomplete="new-password"></div>
-                <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-lg">Registrieren</button>
+            <form id="register-form" class="cl-hidden">
+                <div class="cl-stack">
+                    <div><label for="register-name" class="cl-label">Dein Anzeigename</label><input type="text" id="register-name" class="cl-input" required maxlength="40"></div>
+                    <div><label for="register-email" class="cl-label">E-Mail</label><input type="email" id="register-email" class="cl-input" required autocomplete="email"></div>
+                    <div><label for="register-password" class="cl-label">Passwort</label><input type="password" id="register-password" class="cl-input" required minlength="6" autocomplete="new-password"></div>
+                    <div><label for="register-password-confirm" class="cl-label">Passwort bestätigen</label><input type="password" id="register-password-confirm" class="cl-input" required minlength="6" autocomplete="new-password"></div>
+                    <button type="submit" class="cl-btn cl-btn--signal" style="width:100%;">Registrieren</button>
+                </div>
             </form>
-            <p id="auth-error" class="text-red-400 mt-4 text-center h-5"></p>
+            <p id="auth-error" class="qb-error"></p>
         </div>
     </div>
-    <div id="add-edit-game-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md m-4 modal-enter">
-            <h2 id="modal-title" class="text-2xl font-bold mb-6">Neues Quest erstellen</h2>
+
+    <div id="add-edit-game-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal modal-enter">
+            <h2 id="modal-title">Neues Quest erstellen</h2>
             <form id="add-edit-game-form">
                 <input type="hidden" id="edit-game-id">
-                <div class="mb-4"><label for="game-name" class="block text-slate-400 mb-2">Spiel (Quest)</label><input type="text" id="game-name" class="w-full bg-slate-700 p-2 rounded-md" required></div>
-                <div class="mb-4">
-                    <label for="location-type" class="block text-slate-400 mb-2">Spielort</label>
-                    <select id="location-type" class="w-full bg-slate-700 p-2 rounded-md">
-                        <option value="Genduron">Genduron</option>
-                        <option value="Knobelritter">Knobelritter</option>
-                        <option value="Spieleversum">Spieleversum</option>
-                        <option value="Games Toys and more">Games Toys and more</option>
-                        <option value="Brettspielfreunde">Brettspielfreunde</option>
-                        <option value="other">Anderer Ort...</option>
-                    </select>
+                <div class="cl-stack">
+                    <div><label for="game-name" class="cl-label">Spiel (Quest)</label><input type="text" id="game-name" class="cl-input" required maxlength="80"></div>
+                    <div>
+                        <label for="location-type" class="cl-label">Spielort</label>
+                        <select id="location-type" class="cl-select">
+                            <option value="Genduron">Genduron</option>
+                            <option value="Knobelritter">Knobelritter</option>
+                            <option value="Spieleversum">Spieleversum</option>
+                            <option value="Games Toys and more">Games Toys and more</option>
+                            <option value="Brettspielfreunde">Brettspielfreunde</option>
+                            <option value="other">Anderer Ort...</option>
+                        </select>
+                    </div>
+                    <div id="custom-location-container" class="cl-hidden"><label for="custom-location" class="cl-label">Benutzerdefinierter Ort</label><input type="text" id="custom-location" class="cl-input" placeholder="z.B. Spieleverein Graz" maxlength="80"></div>
+                    <div class="qb-form-row">
+                        <div><label for="game-date" class="cl-label">Datum</label><input type="date" id="game-date" class="cl-input" required></div>
+                        <div><label for="game-time" class="cl-label">Uhrzeit</label><input type="time" id="game-time" class="cl-input" required></div>
+                    </div>
+                    <div class="qb-form-row">
+                        <div><label for="total-seats" class="cl-label">Plätze</label><input type="number" id="total-seats" min="1" max="20" class="cl-input" required></div>
+                        <div><label for="game-duration" class="cl-label">Dauer (Min.)</label><input type="number" id="game-duration" min="10" step="5" class="cl-input" placeholder="z.B. 90"></div>
+                    </div>
+                    <div>
+                        <label class="cl-label">Optionale Tags</label>
+                        <div id="tags-container" class="qb-tags-grid">
+                            <label><input type="checkbox" name="tags" value="für Anfänger:innen geeignet"><span>für Anfänger:innen geeignet</span></label>
+                            <label><input type="checkbox" name="tags" value="Expertenspiel"><span>Expertenspiel</span></label>
+                            <label><input type="checkbox" name="tags" value="Kooperativ"><span>Kooperativ</span></label>
+                            <label><input type="checkbox" name="tags" value="Regeln werden erklärt!"><span>Regeln werden erklärt!</span></label>
+                        </div>
+                    </div>
+                    <div id="organizer-participates-container" class="qb-checkbox-row">
+                        <input type="checkbox" id="organizer-participates" checked>
+                        <label for="organizer-participates">Ich nehme selbst teil</label>
+                    </div>
                 </div>
-                <div id="custom-location-container" class="mb-4 hidden"><label for="custom-location" class="block text-slate-400 mb-2">Benutzerdefinierter Ort</label><input type="text" id="custom-location" class="w-full bg-slate-700 p-2 rounded-md" placeholder="z.B. Spieleverein Graz"></div>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div><label for="game-date" class="block text-slate-400 mb-2">Datum</label><input type="date" id="game-date" class="w-full bg-slate-700 p-2 rounded-md" required></div>
-                    <div><label for="game-time" class="block text-slate-400 mb-2">Uhrzeit</label><input type="time" id="game-time" class="w-full bg-slate-700 p-2 rounded-md" required></div>
-                </div>
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div><label for="total-seats" class="block text-slate-400 mb-2">Plätze</label><input type="number" id="total-seats" min="1" max="20" class="w-full bg-slate-700 p-2 rounded-md" required></div>
-                    <div><label for="game-duration" class="block text-slate-400 mb-2">Dauer (Min.)</label><input type="number" id="game-duration" min="10" step="5" class="w-full bg-slate-700 p-2 rounded-md" placeholder="z.B. 90"></div>
-                </div>
-                <div class="mb-4"><label class="block text-slate-400 mb-2">Optionale Tags</label><div id="tags-container" class="grid grid-cols-2 gap-2 text-sm"><label class="flex items-center"><input type="checkbox" name="tags" value="für Anfänger:innen geeignet" class="h-4 w-4 bg-slate-700 rounded"><span class="ml-2">für Anfänger:innen geeignet</span></label><label class="flex items-center"><input type="checkbox" name="tags" value="Expertenspiel" class="h-4 w-4 bg-slate-700 rounded"><span class="ml-2">Expertenspiel</span></label><label class="flex items-center"><input type="checkbox" name="tags" value="Kooperativ" class="h-4 w-4 bg-slate-700 rounded"><span class="ml-2">Kooperativ</span></label><label class="flex items-center"><input type="checkbox" name="tags" value="Regeln werden erklärt!" class="h-4 w-4 bg-slate-700 rounded"><span class="ml-2">Regeln werden erklärt!</span></label></div></div>
-                <div id="organizer-participates-container" class="mb-4"><label class="flex items-center text-slate-400"><input type="checkbox" id="organizer-participates" class="h-4 w-4 bg-slate-700 rounded" checked><span class="ml-2">Ich nehme selbst teil</span></label></div>
-                <div class="flex justify-between items-center">
-                    <div><button type="button" id="delete-game-btn" class="bg-red-800 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition hidden">Löschen</button><button type="button" id="reactivate-game-btn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition hidden ml-2">Reaktivieren</button></div>
-                    <div class="flex gap-4"><button type="button" id="cancel-add-game" class="bg-slate-600 hover:bg-slate-700 text-white py-2 px-4 rounded-lg transition">Abbrechen</button><button type="submit" id="submit-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition">Erstellen</button></div>
+                <div class="qb-modal-footer">
+                    <div>
+                        <button type="button" id="delete-game-btn" class="cl-btn cl-btn--sm" style="--_bg:var(--cl-err); --_fg:#fff; display:none;">Löschen</button>
+                        <button type="button" id="reactivate-game-btn" class="cl-btn cl-btn--sm" style="--_bg:var(--cl-ok); --_fg:#fff; display:none;">Reaktivieren</button>
+                    </div>
+                    <div class="cl-flex">
+                        <button type="button" id="cancel-add-game" class="cl-btn cl-btn--ghost">Abbrechen</button>
+                        <button type="submit" id="submit-btn" class="cl-btn cl-btn--signal">Erstellen</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
-    <div id="account-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md m-4 modal-enter relative">
-             <button id="close-account-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
-             <h2 class="text-2xl font-bold mb-6">Mein Konto</h2>
-             <div class="mb-6 space-y-2"><p><span class="font-semibold text-slate-400">Name:</span> <span id="account-name"></span></p><p><span class="font-semibold text-slate-400">E-Mail:</span> <span id="account-email"></span></p></div>
-             <div class="border-t border-slate-700 pt-6"><h3 class="font-semibold text-lg mb-2">Konto löschen</h3><p class="text-slate-400 mb-4">Wenn du dein Konto löschen möchtest, klicke auf den Button. Eine Anfrage mit deinen Daten wird an den Administrator gesendet.</p>
-                <form id="deletion-request-form">
-                    <button id="request-deletion-btn" type="submit" class="w-full text-center block bg-red-800 hover:bg-red-700 text-white font-bold py-3 rounded-lg disabled:bg-slate-600 disabled:cursor-not-allowed">Löschung anfragen</button>
-                </form>
-                <p id="deletion-feedback" class="text-green-400 mt-4 text-center h-5"></p>
-            </div>
+
+    <div id="account-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal modal-enter">
+             <button id="close-account-modal" class="qb-modal-close" aria-label="Schließen">&times;</button>
+             <h2>Mein Konto</h2>
+             <p><strong class="cl-muted">Name:</strong> <span id="account-name"></span></p>
+             <p><strong class="cl-muted">E-Mail:</strong> <span id="account-email"></span></p>
+             <hr>
+             <h3>Konto löschen</h3>
+             <p class="cl-muted">Wenn du dein Konto löschen möchtest, klicke auf den Button. Eine Anfrage mit deinen Daten wird an den Administrator gesendet.</p>
+             <form id="deletion-request-form">
+                 <button id="request-deletion-btn" type="submit" class="cl-btn" style="width:100%; --_bg:var(--cl-err); --_fg:#fff;">Löschung anfragen</button>
+             </form>
+             <p id="deletion-feedback" class="qb-feedback cl-center" style="margin-top:.75rem;"></p>
         </div>
     </div>
-    <div id="imprint-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-lg m-4 modal-enter relative flex flex-col">
-             <button id="close-imprint-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl z-10">&times;</button>
-             <h2 class="text-2xl font-bold mb-6 flex-shrink-0">Impressum</h2>
-             <div class="text-slate-300 space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-4">
-                 <h3 class="font-semibold text-slate-100 text-base">Angaben gemäß § 5 ECG</h3><p>Dipl.-Ing. Ing. Andreas E. Neuhold, BSc.<br>Haushoferstraße 25<br>4020 Linz<br>Österreich</p>
-                 <h3 class="font-semibold text-slate-100 text-base mt-4">Kontakt</h3><p>Telefon: +43 677 624 639 01<br>E-Mail: andreas.neuhold@gmail.com</p>
-                 <h3 class="font-semibold text-slate-100 text-base mt-4">Ausrichtung der Webseite</h3><p>Private, nicht-kommerzielle Plattform zur Organisation von Spieletreffen. Die Nutzung der Seite ist kostenlos. Es besteht die Möglichkeit, das Projekt durch freiwillige Zuwendungen (Trinkgelder) zu unterstützen, die über externe Zahlungsdienstleister abgewickelt werden.</p>
-                 <h3 class="font-semibold text-slate-100 text-base mt-4">Online-Streitbeilegung</h3><p>Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">https://ec.europa.eu/consumers/odr</a>. Unsere E-Mail-Adresse findest du oben im Impressum. Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
+
+    <div id="imprint-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal qb-modal--lg modal-enter">
+             <button id="close-imprint-modal" class="qb-modal-close" aria-label="Schließen">&times;</button>
+             <h2>Impressum</h2>
+             <div class="qb-legal-body">
+                 <h3>Angaben gemäß § 5 ECG</h3><p>Dipl.-Ing. Ing. Andreas E. Neuhold, BSc.<br>Haushoferstraße 25<br>4020 Linz<br>Österreich</p>
+                 <h3>Kontakt</h3><p>Telefon: +43 677 624 639 01<br>E-Mail: andreas.neuhold@gmail.com</p>
+                 <h3>Ausrichtung der Webseite</h3><p>Private, nicht-kommerzielle Plattform zur Organisation von Spieletreffen. Die Nutzung der Seite ist kostenlos. Es besteht die Möglichkeit, das Projekt durch freiwillige Zuwendungen (Trinkgelder) zu unterstützen, die über externe Zahlungsdienstleister abgewickelt werden.</p>
+                 <h3>Online-Streitbeilegung</h3><p>Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr</a>. Unsere E-Mail-Adresse findest du oben im Impressum. Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
              </div>
         </div>
     </div>
-    <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-lg m-4 modal-enter relative flex flex-col">
-             <button id="close-privacy-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl z-10">&times;</button>
-             <h2 class="text-2xl font-bold mb-6 flex-shrink-0">Datenschutzerklärung</h2>
-             <div class="text-slate-300 space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-4">
+
+    <div id="privacy-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal qb-modal--lg modal-enter">
+             <button id="close-privacy-modal" class="qb-modal-close" aria-label="Schließen">&times;</button>
+             <h2>Datenschutzerklärung</h2>
+             <div class="qb-legal-body">
                  <p>Der Schutz deiner persönlichen Daten ist uns wichtig. Nachfolgend informieren wir dich über die Verarbeitung deiner personenbezogenen Daten.</p>
-                 <p><strong class="text-slate-100">Verantwortlicher:</strong> Andreas Neuhold, andreas.neuhold@gmail.com</p>
-                 <p><strong class="text-slate-100">Zweck der Datenverarbeitung:</strong> Die Verarbeitung deiner Daten (Anzeigename, E-Mail-Adresse) dient ausschließlich der Organisation von Spielrunden über diese Webseite. Dies umfasst das Erstellen von Spielrunden (Quests), die Teilnahme an diesen und die Verwaltung deines Benutzerkontos.</p>
-                 <p><strong class="text-slate-100">Datenweitergabe:</strong> Deine Daten werden grundsätzlich nicht an Dritte weitergegeben.</p>
-                 <p><strong class="text-slate-100">Freiwillige Zuwendungen (Trinkgelder):</strong> Auf unserer Webseite besteht die Möglichkeit, das Projekt durch freiwillige Zuwendungen zu unterstützen. Wenn du dich dafür entscheidest, wirst du zu einem externen Zahlungsdienstleister (z.B. PayPal) weitergeleitet. Wir selbst erheben oder speichern keine Zahlungsdaten wie Kreditkartennummern oder Bankverbindungen. Die gesamte Zahlungsabwicklung erfolgt ausschließlich über die sicheren Server des jeweiligen Anbieters. Es gelten die Datenschutzbestimmungen des jeweiligen Zahlungsdienstleisters.</p>
-                 <p><strong class="text-slate-100">Speicherung:</strong> Die Datenverarbeitung erfolgt mithilfe einer Firebase Datenbank von Google. Der Serverstandort ist Frankfurt (Deutschland). Mit Google wurde ein Auftragsverarbeitungsvertrag abgeschlossen, der den Schutz deiner Daten gewährleistet.</p>
-                 <p><strong class="text-slate-100">Deine Rechte:</strong> Du hast das Recht auf Auskunft, Berichtigung und Löschung deiner Daten. Für die Löschung deines Kontos und der damit verbundenen Daten, kontaktiere bitte den oben genannten Verantwortlichen.</p>
-                 <p><strong class="text-slate-100">Anwendbares Recht und Gerichtsstand:</strong> Es gilt österreichisches Recht. Der Gerichtsstand ist Linz.</p>
+                 <p><strong>Verantwortlicher:</strong> Andreas Neuhold, andreas.neuhold@gmail.com</p>
+                 <p><strong>Zweck der Datenverarbeitung:</strong> Die Verarbeitung deiner Daten (Anzeigename, E-Mail-Adresse) dient ausschließlich der Organisation von Spielrunden über diese Webseite. Dies umfasst das Erstellen von Spielrunden (Quests), die Teilnahme an diesen und die Verwaltung deines Benutzerkontos.</p>
+                 <p><strong>Datenweitergabe:</strong> Deine Daten werden grundsätzlich nicht an Dritte weitergegeben.</p>
+                 <p><strong>Freiwillige Zuwendungen (Trinkgelder):</strong> Auf unserer Webseite besteht die Möglichkeit, das Projekt durch freiwillige Zuwendungen zu unterstützen. Wenn du dich dafür entscheidest, wirst du zu einem externen Zahlungsdienstleister (z.B. PayPal) weitergeleitet. Wir selbst erheben oder speichern keine Zahlungsdaten wie Kreditkartennummern oder Bankverbindungen. Die gesamte Zahlungsabwicklung erfolgt ausschließlich über die sicheren Server des jeweiligen Anbieters. Es gelten die Datenschutzbestimmungen des jeweiligen Zahlungsdienstleisters.</p>
+                 <p><strong>Speicherung:</strong> Die Datenverarbeitung erfolgt mithilfe einer Firebase Datenbank von Google. Der Serverstandort ist Frankfurt (Deutschland). Mit Google wurde ein Auftragsverarbeitungsvertrag abgeschlossen, der den Schutz deiner Daten gewährleistet.</p>
+                 <p><strong>Deine Rechte:</strong> Du hast das Recht auf Auskunft, Berichtigung und Löschung deiner Daten. Für die Löschung deines Kontos und der damit verbundenen Daten, kontaktiere bitte den oben genannten Verantwortlichen.</p>
+                 <p><strong>Anwendbares Recht und Gerichtsstand:</strong> Es gilt österreichisches Recht. Der Gerichtsstand ist Linz.</p>
              </div>
         </div>
     </div>
 
     <!-- Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-sm m-4 modal-enter text-center">
-            <p id="confirm-modal-text" class="text-slate-300 mb-6">Bist du sicher?</p>
-            <div class="flex justify-center gap-4">
-                <button id="confirm-modal-cancel-btn" class="bg-slate-600 hover:bg-slate-700 text-white py-2 px-6 rounded-lg transition">Abbrechen</button>
-                <button id="confirm-modal-confirm-btn" class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-6 rounded-lg transition">Bestätigen</button>
+    <div id="confirm-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal qb-modal--sm modal-enter cl-center">
+            <p id="confirm-modal-text" class="cl-muted">Bist du sicher?</p>
+            <div class="cl-flex" style="justify-content:center;">
+                <button id="confirm-modal-cancel-btn" class="cl-btn cl-btn--ghost">Abbrechen</button>
+                <button id="confirm-modal-confirm-btn" class="cl-btn" style="--_bg:var(--cl-err); --_fg:#fff;">Bestätigen</button>
             </div>
         </div>
     </div>
@@ -239,7 +430,7 @@
     <!-- Firebase and App Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, Timestamp, orderBy, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // --- Config and Initialization ---
@@ -300,13 +491,13 @@
         const privacyModal = document.getElementById('privacy-modal');
         const questListContainer = document.getElementById('quest-list-container');
         const confirmModal = document.getElementById('confirm-modal');
-        
-       
+
+
         // --- Helper Functions ---
-        const showModal = (modal) => modal.classList.remove('hidden');
-        const hideModal = (modal) => modal.classList.add('hidden');
-        const openMenu = () => { sideMenu.classList.remove('translate-x-full'); menuOverlay.classList.remove('hidden'); };
-        const closeMenu = () => { sideMenu.classList.add('translate-x-full'); menuOverlay.classList.add('hidden'); };
+        const showModal = (modal) => modal.classList.remove('cl-hidden');
+        const hideModal = (modal) => modal.classList.add('cl-hidden');
+        const openMenu = () => { sideMenu.classList.add('qb-open'); menuOverlay.classList.remove('cl-hidden'); };
+        const closeMenu = () => { sideMenu.classList.remove('qb-open'); menuOverlay.classList.add('cl-hidden'); };
 
         // XSS Protection: Escape user-generated content before rendering
         function escapeHTML(str) {
@@ -320,7 +511,7 @@
         function showToast(message) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = 'toast toast-enter';
+            toast.className = 'qb-toast toast-enter';
             toast.textContent = message;
             container.appendChild(toast);
             setTimeout(() => {
@@ -347,7 +538,7 @@
         document.getElementById('confirm-modal-cancel-btn').addEventListener('click', () => hideModal(confirmModal));
         confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) hideModal(confirmModal); });
 
-       
+
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 showToast('Link in die Zwischenablage kopiert!');
@@ -357,13 +548,51 @@
             });
         }
 
+        // --- Join / Leave a quest, race-condition safe via a Firestore transaction ---
+        // (previously this logic was duplicated in two places and used a plain
+        // getDoc()+updateDoc(), which lets two simultaneous clicks both pass the
+        // "is there a free seat" check and overbook the game)
+        async function toggleParticipation(gameId) {
+            if (!currentUser) { showModal(authModal); return null; }
+            const gameRef = doc(db, "spielrunden", gameId);
+            let wasFull = false;
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const snap = await transaction.get(gameRef);
+                    if (!snap.exists()) return;
+                    const data = snap.data();
+                    const isParticipant = data.participants.some(p => p.uid === currentUser.uid);
+                    let newParticipants;
+                    if (isParticipant) {
+                        newParticipants = data.participants.filter(p => p.uid !== currentUser.uid);
+                    } else {
+                        if (data.participants.length >= data.totalSeats) {
+                            wasFull = true;
+                            return;
+                        }
+                        newParticipants = [...data.participants, { uid: currentUser.uid, displayName: currentUser.displayName }];
+                    }
+                    transaction.update(gameRef, { participants: newParticipants });
+                });
+                if (wasFull) {
+                    showToast("Diese Runde ist bereits voll.");
+                    return null;
+                }
+                return await getDoc(gameRef);
+            } catch (error) {
+                console.error("Fehler beim Beitreten/Verlassen:", error);
+                showToast("Das hat leider nicht geklappt.");
+                return null;
+            }
+        }
+
         // --- Event Delegation for dynamic content ---
         questListContainer.addEventListener('click', async (e) => {
             const editBtn = e.target.closest('.edit-game-btn');
             const shareBtn = e.target.closest('.share-quest-btn');
             const joinLeaveBtn = e.target.closest('.join-leave-btn');
             const cancelBtn = e.target.closest('.cancel-game-btn');
-            const viewBtn = e.target.closest('.view-quest-btn'); 
+            const viewBtn = e.target.closest('.view-quest-btn');
 
             if (editBtn) {
                 const gameId = editBtn.dataset.gameId;
@@ -377,31 +606,9 @@
                  const shareUrl = `${window.location.origin}${window.location.pathname}?quest=${gameId}`;
                  copyToClipboard(shareUrl);
             } else if (joinLeaveBtn) {
-                if (!currentUser) { showModal(authModal); return; }
-                const gameId = joinLeaveBtn.dataset.gameId;
                 joinLeaveBtn.disabled = true;
-                const gameRef = doc(db, "spielrunden", gameId);
-                try {
-                    const docSnap = await getDoc(gameRef);
-                    if (docSnap.exists()) {
-                        const gameData = docSnap.data();
-                        const isParticipant = gameData.participants.some(p => p.uid === currentUser.uid);
-                        let newParticipants;
-                        if (isParticipant) {
-                            newParticipants = gameData.participants.filter(p => p.uid !== currentUser.uid);
-                        } else {
-                            if (gameData.participants.length < gameData.totalSeats) {
-                                newParticipants = [...gameData.participants, { uid: currentUser.uid, displayName: currentUser.displayName }];
-                            } else {
-                                showToast("Diese Runde ist bereits voll.");
-                                joinLeaveBtn.disabled = false;
-                                return;
-                            }
-                        }
-                        await updateDoc(gameRef, { participants: newParticipants });
-                    }
-                } catch (error) { console.error("Fehler beim Beitreten/Verlassen:", error); } 
-                finally { joinLeaveBtn.disabled = false; }
+                await toggleParticipation(joinLeaveBtn.dataset.gameId);
+                joinLeaveBtn.disabled = false;
             } else if (cancelBtn) {
                 const gameId = cancelBtn.dataset.gameId;
                 showConfirmModal('Bist du sicher, dass du dieses Quest absagen möchtest?', async () => {
@@ -430,8 +637,8 @@
              submitBtn.textContent = 'Erstellen';
              addEditGameForm.reset();
              document.getElementById('edit-game-id').value = '';
-             document.getElementById('delete-game-btn').classList.add('hidden');
-             document.getElementById('reactivate-game-btn').classList.add('hidden');
+             document.getElementById('delete-game-btn').style.display = 'none';
+             document.getElementById('reactivate-game-btn').style.display = 'none';
              const maxDate = new Date();
              maxDate.setMonth(maxDate.getMonth() + 3);
              document.getElementById('game-date').setAttribute('max', maxDate.toISOString().split('T')[0]);
@@ -472,7 +679,7 @@
                 showToast("Quest wurde reaktiviert.");
             }
         });
-       
+
         document.getElementById('resend-verification-btn').addEventListener('click', async (e) => {
             const btn = e.target;
             const feedback = document.getElementById('resend-feedback');
@@ -515,18 +722,14 @@
 
 
         // Auth Modal Logic
-        document.querySelectorAll('.auth-tab').forEach(tab => {
+        document.querySelectorAll('.qb-auth-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const targetTab = tab.dataset.tab;
-                document.querySelectorAll('.auth-tab').forEach(t => {
-                    t.classList.remove('border-cyan-500', 'text-white');
-                    t.classList.add('border-transparent', 'text-slate-400');
-                });
-                tab.classList.add('border-cyan-500', 'text-white');
-                tab.classList.remove('border-transparent', 'text-slate-400');
-               
-                loginForm.classList.toggle('hidden', targetTab !== 'login');
-                registerForm.classList.toggle('hidden', targetTab !== 'register');
+                document.querySelectorAll('.qb-auth-tab').forEach(t => t.classList.remove('is-active'));
+                tab.classList.add('is-active');
+
+                loginForm.classList.toggle('cl-hidden', targetTab !== 'login');
+                registerForm.classList.toggle('cl-hidden', targetTab !== 'register');
                 authError.textContent = '';
             });
         });
@@ -575,7 +778,7 @@
                 authError.textContent = getGermanAuthError(error.code);
             }
         });
-       
+
         document.getElementById('forgot-password-link').addEventListener('click', async (e) => {
              e.preventDefault();
              const email = document.getElementById('login-email').value;
@@ -601,7 +804,7 @@
         }
 
         locationTypeSelect.addEventListener('change', () => {
-            customLocationContainer.classList.toggle('hidden', locationTypeSelect.value !== 'other');
+            customLocationContainer.classList.toggle('cl-hidden', locationTypeSelect.value !== 'other');
         });
 
         addEditGameForm.addEventListener('submit', async (e) => {
@@ -618,7 +821,7 @@
                 const date = document.getElementById('game-date').value;
                 const time = document.getElementById('game-time').value;
                 const dateTime = new Date(`${date}T${time}`);
-               
+
                 if (!location) throw new Error("Der Spielort darf nicht leer sein.");
                 if (isNaN(dateTime.getTime())) throw new Error("Ungültiges Datum oder Uhrzeit.");
 
@@ -641,7 +844,7 @@
                         const organizerParticipates = document.getElementById('organizer-participates').checked;
                         const isOrganizerInList = participants.some(p => p.uid === currentUser.uid);
                         if (organizerParticipates && !isOrganizerInList) {
-                            participants.push({ uid: currentUser.uid, displayName: currentUser.displayName });
+                            participants = [...participants, { uid: currentUser.uid, displayName: currentUser.displayName }];
                         } else if (!organizerParticipates && isOrganizerInList) {
                             participants = participants.filter(p => p.uid !== currentUser.uid);
                         }
@@ -654,7 +857,7 @@
                     questData.createdAt = Timestamp.now();
                     questData.cancelled = false;
                     questData.participants = [];
-                   
+
                     if (document.getElementById('organizer-participates').checked) {
                         questData.participants.push({ uid: currentUser.uid, displayName: currentUser.displayName });
                     }
@@ -668,11 +871,11 @@
                 submitBtn.disabled = false;
             }
         });
-       
+
         function applyAllTransformsAndRender() {
             const selectedDate = dateFilterInput.value;
-            const selectedDays = Array.from(dayFilterContainer.querySelectorAll('.day-filter-btn.active')).map(btn => btn.dataset.day);
-            const selectedLocations = Array.from(locationFilterContainer.querySelectorAll('.location-filter-btn.active')).map(btn => btn.dataset.location);
+            const selectedDays = Array.from(dayFilterContainer.querySelectorAll('.day-filter-btn[aria-pressed="true"]')).map(btn => btn.dataset.day);
+            const selectedLocations = Array.from(locationFilterContainer.querySelectorAll('.location-filter-btn[aria-pressed="true"]')).map(btn => btn.dataset.location);
             const nameText = nameFilterInput.value.toLowerCase().trim();
             const locationText = locationFilterInput ? locationFilterInput.value.toLowerCase().trim() : "";
 
@@ -698,7 +901,7 @@
                 const valB = b[sortConfig.key].toMillis();
                 return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
             });
-           
+
             const totalPages = Math.ceil(filteredQuests.length / ITEMS_PER_PAGE);
             if (currentPage > totalPages) currentPage = totalPages || 1;
             const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -715,7 +918,7 @@
 
             if (quests.length === 0) {
                 const message = allQuests.length > 0 ? 'Keine Quests für diese Filter gefunden.' : 'Aktuell sind keine Quests verfügbar. Erstelle das erste!';
-                gameListCards.innerHTML = `<div class="col-span-full text-slate-400 text-center">${message}</div>`;
+                gameListCards.innerHTML = `<div class="qb-empty">${message}</div>`;
                 return;
             }
 
@@ -724,7 +927,7 @@
                 const timezoneOffset = dateObj.getTimezoneOffset() * 60000;
                 const adjustedDate = new Date(dateObj.getTime() + timezoneOffset);
                 const heading = document.createElement('h3');
-                heading.className = 'text-lg font-semibold text-slate-400 mt-6 mb-3 col-span-full';
+                heading.className = 'qb-day-heading';
                 heading.textContent = `Quests am ${adjustedDate.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}`;
                 gameListCards.appendChild(heading);
                 quests.forEach(quest => gameListCards.appendChild(renderGameCard({ id: quest.id, data: () => quest })));
@@ -738,61 +941,61 @@
                 acc[sortableKey].quests.push(quest);
                 return acc;
             }, {});
-            
+
             Object.keys(questsByDay).sort().forEach(dayKey => {
                 const { dateObj, quests } = questsByDay[dayKey];
                 const heading = document.createElement('h3');
-                heading.className = 'text-lg font-semibold text-slate-400 mt-6 mb-3 col-span-full';
+                heading.className = 'qb-day-heading';
                 heading.textContent = dateObj.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
                 gameListCards.appendChild(heading);
                 quests.forEach(quest => gameListCards.appendChild(renderGameCard({ id: quest.id, data: () => quest })));
             });
         }
-       
+
         function renderPaginationControls(totalPages) {
             paginationControls.innerHTML = '';
             if (totalPages > 1) {
                 const prevDisabled = currentPage === 1 ? 'disabled' : '';
                 const nextDisabled = currentPage === totalPages ? 'disabled' : '';
                 paginationControls.innerHTML = `
-                    <button id="prev-page-btn" class="px-3 py-1 bg-slate-700 rounded-md disabled:opacity-50" ${prevDisabled}>&lt; Zurück</button>
+                    <button id="prev-page-btn" class="cl-btn cl-btn--ghost cl-btn--sm" ${prevDisabled}>&lt; Zurück</button>
                     <span>Seite ${currentPage} von ${totalPages}</span>
-                    <button id="next-page-btn" class="px-3 py-1 bg-slate-700 rounded-md disabled:opacity-50" ${nextDisabled}>Weiter &gt;</button>
+                    <button id="next-page-btn" class="cl-btn cl-btn--ghost cl-btn--sm" ${nextDisabled}>Weiter &gt;</button>
                 `;
                  document.getElementById('prev-page-btn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyAllTransformsAndRender(); } });
                  document.getElementById('next-page-btn').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; applyAllTransformsAndRender(); } });
             }
         }
-        
-        dayFilterContainer.addEventListener('click', (e) => { 
-            if (e.target.classList.contains('day-filter-btn')) { 
+
+        dayFilterContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('day-filter-btn')) {
                 dateFilterInput.value = '';
-                clearDateFilterBtn.classList.add('hidden');
-                const clickedDay = e.target.dataset.day; 
-                if (clickedDay === 'all') { 
-                    dayFilterContainer.querySelectorAll('.day-filter-btn').forEach(btn => btn.classList.remove('active')); 
-                    e.target.classList.add('active'); 
-                } else { 
-                    dayFilterContainer.querySelector('[data-day="all"]').classList.remove('active'); 
-                    e.target.classList.toggle('active'); 
-                    if (dayFilterContainer.querySelectorAll('.day-filter-btn.active').length === 0) { 
-                        dayFilterContainer.querySelector('[data-day="all"]').classList.add('active'); 
-                    } 
-                } 
-                applyAllTransformsAndRender(); 
-            } 
+                clearDateFilterBtn.classList.add('cl-hidden');
+                const clickedDay = e.target.dataset.day;
+                if (clickedDay === 'all') {
+                    dayFilterContainer.querySelectorAll('.day-filter-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+                    e.target.setAttribute('aria-pressed', 'true');
+                } else {
+                    dayFilterContainer.querySelector('[data-day="all"]').setAttribute('aria-pressed', 'false');
+                    e.target.setAttribute('aria-pressed', e.target.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+                    if (dayFilterContainer.querySelectorAll('.day-filter-btn[aria-pressed="true"]').length === 0) {
+                        dayFilterContainer.querySelector('[data-day="all"]').setAttribute('aria-pressed', 'true');
+                    }
+                }
+                applyAllTransformsAndRender();
+            }
         });
         locationFilterContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('location-filter-btn')) {
                 const clickedLocation = e.target.dataset.location;
                 if (clickedLocation === 'all') {
-                    locationFilterContainer.querySelectorAll('.location-filter-btn').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
+                    locationFilterContainer.querySelectorAll('.location-filter-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+                    e.target.setAttribute('aria-pressed', 'true');
                 } else {
-                    locationFilterContainer.querySelector('[data-location="all"]').classList.remove('active');
-                    e.target.classList.toggle('active');
-                    if (locationFilterContainer.querySelectorAll('.location-filter-btn.active').length === 0) {
-                        locationFilterContainer.querySelector('[data-location="all"]').classList.add('active');
+                    locationFilterContainer.querySelector('[data-location="all"]').setAttribute('aria-pressed', 'false');
+                    e.target.setAttribute('aria-pressed', e.target.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+                    if (locationFilterContainer.querySelectorAll('.location-filter-btn[aria-pressed="true"]').length === 0) {
+                        locationFilterContainer.querySelector('[data-location="all"]').setAttribute('aria-pressed', 'true');
                     }
                 }
                 applyAllTransformsAndRender();
@@ -801,14 +1004,14 @@
         nameFilterInput.addEventListener('input', applyAllTransformsAndRender);
         if (locationFilterInput) locationFilterInput.addEventListener('input', applyAllTransformsAndRender);
         dateFilterInput.addEventListener('change', () => {
-            dayFilterContainer.querySelectorAll('.day-filter-btn').forEach(btn => btn.classList.remove('active'));
-            dayFilterContainer.querySelector('[data-day="all"]').classList.add('active');
-            clearDateFilterBtn.classList.toggle('hidden', !dateFilterInput.value);
+            dayFilterContainer.querySelectorAll('.day-filter-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+            dayFilterContainer.querySelector('[data-day="all"]').setAttribute('aria-pressed', 'true');
+            clearDateFilterBtn.classList.toggle('cl-hidden', !dateFilterInput.value);
             applyAllTransformsAndRender();
         });
         clearDateFilterBtn.addEventListener('click', () => {
             dateFilterInput.value = '';
-            clearDateFilterBtn.classList.add('hidden');
+            clearDateFilterBtn.classList.add('cl-hidden');
             applyAllTransformsAndRender();
         });
 
@@ -817,16 +1020,16 @@
             if (verificationCheckInterval) clearInterval(verificationCheckInterval);
             const wasJustLoggedIn = !currentUser && user;
             currentUser = user ? { uid: user.uid, displayName: user.displayName, email: user.email, emailVerified: user.emailVerified } : null;
-           
+
             if (wasJustLoggedIn) hideModal(authModal);
-            
+
             updateUserUI(!!user);
             updateSideMenu(!!user);
-            listenToGames(); 
+            listenToGames();
 
             if (initialSharedQuestId) {
                 const questId = initialSharedQuestId;
-                initialSharedQuestId = null; 
+                initialSharedQuestId = null;
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.delete('quest');
                 window.history.replaceState({}, document.title, newUrl.href);
@@ -838,7 +1041,7 @@
                         showModal(sharedQuestModal);
                     }
                 } catch (error) { console.error("Error fetching shared quest:", error); }
-            } else if (wasJustLoggedIn && !sharedQuestModal.classList.contains('hidden')) {
+            } else if (wasJustLoggedIn && !sharedQuestModal.classList.contains('cl-hidden')) {
                 const questId = sharedQuestContent.dataset.questId;
                 if (questId) {
                     const questRef = doc(db, "spielrunden", questId);
@@ -848,7 +1051,7 @@
             }
 
             if (user && !user.emailVerified) {
-                verificationBanner.classList.remove('hidden');
+                verificationBanner.classList.remove('cl-hidden');
                 verificationCheckInterval = setInterval(async () => {
                     await auth.currentUser.reload();
                     if (auth.currentUser.emailVerified) {
@@ -861,40 +1064,41 @@
         });
 
         function updateUserUI(isLoggedIn) {
-            verificationBanner.classList.add('hidden');
+            verificationBanner.classList.add('cl-hidden');
             if (isLoggedIn && !currentUser.emailVerified) {
-                verificationBanner.classList.remove('hidden');
+                verificationBanner.classList.remove('cl-hidden');
             }
         }
-       
+
         function updateSideMenu(isLoggedIn) {
-            let menuHTML = `<button id="close-menu-btn" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>`;
+            let menuHTML = `<button id="close-menu-btn" class="qb-modal-close" aria-label="Menü schließen" style="position:absolute;">&times;</button>`;
             if (isLoggedIn) {
                 menuHTML += `
-                    <div class="mb-6">
-                        <p class="font-semibold text-white">${escapeHTML(currentUser.displayName || '')}</p>
-                        <p class="text-sm text-slate-400">${escapeHTML(currentUser.email)}</p>
+                    <div style="margin-top:2rem; margin-bottom:1rem;">
+                        <p style="font-weight:600;">${escapeHTML(currentUser.displayName || '')}</p>
+                        <p class="cl-muted" style="font-size:.9rem;">${escapeHTML(currentUser.email)}</p>
                     </div>
-                    <nav class="flex flex-col space-y-2">
-                        <a href="#" id="account-btn" class="p-2 rounded-md hover:bg-slate-700">Mein Konto</a>
-                        <a href="anleitung.html" class="p-2 rounded-md hover:bg-slate-700">Anleitung</a>
-                        <a href="faq.html" class="p-2 rounded-md hover:bg-slate-700">FAQ</a>
-                        <div class="border-t border-slate-700 my-2"></div>
-                        <a href="#" id="imprint-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Impressum</a>
-                        <a href="#" id="privacy-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Datenschutz</a>
-                        <a href="#" id="logout-btn" class="p-2 rounded-md hover:bg-slate-700 border-t border-slate-700 mt-2 pt-3">Ausloggen</a>
+                    <nav class="qb-menu-nav">
+                        <a href="#" id="account-btn" class="qb-menu-link">Mein Konto</a>
+                        <a href="anleitung.html" class="qb-menu-link">Anleitung</a>
+                        <a href="faq.html" class="qb-menu-link">FAQ</a>
+                        <div class="qb-menu-divider"></div>
+                        <a href="#" id="imprint-menu-link" class="qb-menu-link qb-menu-link--small">Impressum</a>
+                        <a href="#" id="privacy-menu-link" class="qb-menu-link qb-menu-link--small">Datenschutz</a>
+                        <div class="qb-menu-divider"></div>
+                        <a href="#" id="logout-btn" class="qb-menu-link">Ausloggen</a>
                     </nav>
                 `;
             } else {
                 menuHTML += `
-                     <h2 class="text-xl font-bold mb-6">Menü</h2>
-                     <nav class="flex flex-col space-y-2">
-                         <a href="#" id="login-register-btn" class="p-2 rounded-md hover:bg-slate-700">Login / Registrieren</a>
-                         <a href="anleitung.html" class="p-2 rounded-md hover:bg-slate-700">Anleitung</a>
-                         <a href="faq.html" class="p-2 rounded-md hover:bg-slate-700">FAQ</a>
-                         <div class="border-t border-slate-700 my-2"></div>
-                         <a href="#" id="imprint-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Impressum</a>
-                         <a href="#" id="privacy-menu-link" class="p-2 rounded-md hover:bg-slate-700 text-sm">Datenschutz</a>
+                     <h2 style="margin-top:2rem;">Menü</h2>
+                     <nav class="qb-menu-nav">
+                         <a href="#" id="login-register-btn" class="qb-menu-link">Login / Registrieren</a>
+                         <a href="anleitung.html" class="qb-menu-link">Anleitung</a>
+                         <a href="faq.html" class="qb-menu-link">FAQ</a>
+                         <div class="qb-menu-divider"></div>
+                         <a href="#" id="imprint-menu-link" class="qb-menu-link qb-menu-link--small">Impressum</a>
+                         <a href="#" id="privacy-menu-link" class="qb-menu-link qb-menu-link--small">Datenschutz</a>
                     </nav>
                 `;
             }
@@ -909,94 +1113,94 @@
 
             if(isLoggedIn) {
                 sideMenuContent.querySelector('#logout-btn').addEventListener('click', (e) => { e.preventDefault(); signOut(auth); closeMenu(); });
-                sideMenuContent.querySelector('#account-btn').addEventListener('click', (e) => { 
-                    e.preventDefault(); 
-                    document.getElementById('account-name').textContent = currentUser.displayName; 
+                sideMenuContent.querySelector('#account-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.getElementById('account-name').textContent = currentUser.displayName;
                     document.getElementById('account-email').textContent = currentUser.email;
                     document.getElementById('request-deletion-btn').disabled = false;
                     document.getElementById('deletion-feedback').textContent = '';
-                    showModal(accountModal); 
-                    closeMenu(); 
+                    showModal(accountModal);
+                    closeMenu();
                 });
             } else {
                 sideMenuContent.querySelector('#login-register-btn').addEventListener('click', (e) => { e.preventDefault(); showModal(authModal); closeMenu(); });
             }
         }
-       
+
         let unsubscribeFromGames = null;
-        function listenToGames() { 
-            if (unsubscribeFromGames) unsubscribeFromGames(); 
+        function listenToGames() {
+            if (unsubscribeFromGames) unsubscribeFromGames();
             const cutoffDate = new Date(new Date().getTime() - 3 * 60 * 60 * 1000);
-            const q = query(collection(db, "spielrunden"), where("dateTime", ">=", Timestamp.fromDate(cutoffDate)), orderBy("dateTime", "asc")); 
-            
-            unsubscribeFromGames = onSnapshot(q, (snapshot) => { 
+            const q = query(collection(db, "spielrunden"), where("dateTime", ">=", Timestamp.fromDate(cutoffDate)), orderBy("dateTime", "asc"));
+
+            unsubscribeFromGames = onSnapshot(q, (snapshot) => {
                 loadingIndicator.style.display = 'none';
                 allQuests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 applyAllTransformsAndRender();
-            }, (error) => { 
-                console.error("Firestore Error:", error); 
-                loadingIndicator.innerHTML = '<p class="text-red-400 text-center col-span-full">Fehler beim Laden der Quests.</p>'; 
-            }); 
+            }, (error) => {
+                console.error("Firestore Error:", error);
+                loadingIndicator.innerHTML = '<p style="color:var(--cl-err);">Fehler beim Laden der Quests.</p>';
+            });
         }
-       
+
         function renderGameCard(doc) {
-            const game = doc.data(); 
+            const game = doc.data();
             const gameId = doc.id;
-            const isCreator = currentUser?.uid === game.creatorId; 
-            const isParticipant = currentUser && game.participants.some(p => p.uid === currentUser.uid); 
-            const participantsCount = game.participants.length; 
-            const isFull = participantsCount >= game.totalSeats; 
-            const isCancelled = game.cancelled || false; 
-            const gameDate = game.dateTime.toDate(); 
-            const formattedDate = gameDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }); 
-            const formattedTime = gameDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); 
-           
+            const isCreator = currentUser?.uid === game.creatorId;
+            const isParticipant = currentUser && game.participants.some(p => p.uid === currentUser.uid);
+            const participantsCount = game.participants.length;
+            const isFull = participantsCount >= game.totalSeats;
+            const isCancelled = game.cancelled || false;
+            const gameDate = game.dateTime.toDate();
+            const formattedDate = gameDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            const formattedTime = gameDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
             const card = document.createElement('div');
-            card.className = `quest-card view-quest-btn bg-slate-800 rounded-lg shadow-lg p-6 flex flex-col relative transition-transform transform hover:scale-105 cursor-pointer`; 
+            card.className = `cl-card cl-card--pad qb-quest-card view-quest-btn`;
             card.dataset.gameId = gameId;
-           
-            let tagsHTML = (game.tags || []).map(tag => `<span class="bg-cyan-800 text-cyan-200 text-xs font-medium mr-2 mb-2 px-2.5 py-0.5 rounded-full">${escapeHTML(tag)}</span>`).join(''); 
+
+            let tagsHTML = (game.tags || []).map(tag => `<span class="qb-tag">${escapeHTML(tag)}</span>`).join('');
+
+            let joinBtnClass = 'cl-btn cl-btn--sm ';
+            if (isCancelled || (isFull && !isParticipant)) joinBtnClass += 'cl-btn--muted';
+            else if (isParticipant) joinBtnClass += 'cl-btn--warn';
+            else joinBtnClass += 'cl-btn--signal';
 
             card.innerHTML = `
-                ${isCancelled ? '<div class="absolute inset-0 bg-red-900/70 flex items-center justify-center rounded-lg z-10"><span class="text-2xl font-bold text-white transform -rotate-12">ABGESAGT</span></div>' : ''}
-                <div class="flex-grow ${isCancelled ? 'opacity-50' : ''}">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-xl font-bold text-cyan-400 pr-12">${escapeHTML(game.gameName)}</h3>
-                        <div class="absolute top-4 right-4 flex items-center gap-2 text-xl z-20">
-                            <button class="share-quest-btn text-slate-500 hover:text-cyan-400" title="Quest teilen" data-game-id="${gameId}">🔗</button>
+                ${isCancelled ? '<div class="qb-cancelled-overlay"><span>ABGESAGT</span></div>' : ''}
+                <div class="qb-quest-card__body ${isCancelled ? 'qb-dimmed' : ''}">
+                    <div class="qb-quest-card__top">
+                        <h3 class="qb-quest-card__title" style="color:var(--cl-navy-600);">${escapeHTML(game.gameName)}</h3>
+                        <div class="qb-quest-card__actions">
+                            <button class="share-quest-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="Quest teilen" aria-label="Quest teilen" data-game-id="${gameId}">🔗</button>
                             ${isCreator ? `
-                                <button class="edit-game-btn text-slate-500 hover:text-cyan-400" title="${isCancelled ? 'Verwalten' : 'Bearbeiten'}" data-game-id="${gameId}">✏️</button>
-                                ${!isCancelled ? `<button class="cancel-game-btn text-slate-500 hover:text-red-400" title="Absagen" data-game-id="${gameId}">⨷</button>` : ''}
+                                <button class="edit-game-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="${isCancelled ? 'Verwalten' : 'Bearbeiten'}" aria-label="${isCancelled ? 'Quest verwalten' : 'Quest bearbeiten'}" data-game-id="${gameId}">✏️</button>
+                                ${!isCancelled ? `<button class="cancel-game-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="Absagen" aria-label="Quest absagen" data-game-id="${gameId}">⨷</button>` : ''}
                             ` : ''}
                         </div>
                     </div>
-                    <div class="flex items-center text-slate-400 mb-3 text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+                    <div class="qb-meta-row">
+                        <svg class="qb-icon-sm" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
                         <span>${escapeHTML(game.location)}</span>
                     </div>
-                     <div class="flex items-center text-slate-300 mb-4 text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg>
+                     <div class="qb-meta-row" style="color:var(--cl-text);">
+                        <svg class="qb-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg>
                         <span>${formattedDate}, ${formattedTime} Uhr ${game.duration ? `(ca. ${game.duration} Min.)` : ''}</span>
                     </div>
-                    <div class="flex flex-wrap mb-4">${tagsHTML}</div>
+                    <div class="qb-tags">${tagsHTML}</div>
                 </div>
-                <div class="border-t border-slate-700 pt-4 mt-auto ${isCancelled ? 'opacity-50' : ''}">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center text-slate-300">
-                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 1 1 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1Zm0 0h6v-1a6 6 0 0 0-9-5.197M15 21a6 6 0 0 0-9-5.197m0 0A5.995 5.995 0 0 0 12 12a5.995 5.995 0 0 0-3-5.197M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg>
-                                 <span class="${isFull ? 'text-red-400' : 'text-green-400'} font-semibold">${participantsCount}/${game.totalSeats}</span>
-                            </div>
-                            <div class="flex -space-x-2 overflow-hidden">
-                                 ${game.participants.slice(0, 3).map(p => `<span class="inline-block h-6 w-6 rounded-full bg-slate-600 ring-2 ring-slate-800 text-center leading-6 text-[10px]" title="${escapeHTML(p.displayName)}">${escapeHTML(p.displayName).substring(0, 2).toUpperCase()}</span>`).join('')}
-                                 ${game.participants.length > 3 ? `<span class="flex items-center justify-center h-6 w-6 rounded-full bg-slate-700 ring-2 ring-slate-800 text-[10px] font-medium text-slate-400">+${game.participants.length - 3}</span>` : ''}
+                <div class="qb-card-footer ${isCancelled ? 'qb-dimmed' : ''}">
+                    <div class="qb-footer-row">
+                        <div class="qb-seats">
+                            <span class="cl-badge ${isFull ? 'cl-badge--err' : 'cl-badge--ok'}">${participantsCount}/${game.totalSeats}</span>
+                            <div class="qb-avatars">
+                                 ${game.participants.slice(0, 3).map(p => `<span class="qb-avatar" title="${escapeHTML(p.displayName)}">${escapeHTML(p.displayName).substring(0, 2).toUpperCase()}</span>`).join('')}
+                                 ${game.participants.length > 3 ? `<span class="qb-avatar">+${game.participants.length - 3}</span>` : ''}
                             </div>
                         </div>
-                        <div>
-                            <button class="join-leave-btn font-semibold py-2 px-4 rounded-lg transition text-sm ${isCancelled ? 'bg-slate-700 text-slate-500' : (isParticipant ? 'bg-amber-600 hover:bg-amber-700' : (isFull && !isParticipant ? 'bg-slate-700 text-slate-500' : 'bg-cyan-500 hover:bg-cyan-600'))}" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>
-                                ${isCancelled ? 'Abgesagt' : (isParticipant ? 'Verlassen' : (isFull ? 'Voll' : 'Dabei!'))}
-                            </button>
-                        </div>
+                        <button class="join-leave-btn ${joinBtnClass}" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>
+                            ${isCancelled ? 'Abgesagt' : (isParticipant ? 'Verlassen' : (isFull ? 'Voll' : 'Dabei!'))}
+                        </button>
                     </div>
                 </div>
             `;
@@ -1014,10 +1218,10 @@
             const isPredefinedLocation = Array.from(locationSelect.options).some(opt => opt.value === game.location);
             if (isPredefinedLocation) {
                 locationSelect.value = game.location;
-                customLocationContainer.classList.add('hidden');
+                customLocationContainer.classList.add('cl-hidden');
             } else {
                 locationSelect.value = 'other';
-                customLocationContainer.classList.remove('hidden');
+                customLocationContainer.classList.remove('cl-hidden');
                 customLocationInput.value = game.location;
             }
 
@@ -1035,9 +1239,9 @@
             document.querySelectorAll('#add-edit-game-form *:not(button)').forEach(el => el.disabled = isCancelled);
             document.getElementById('submit-btn').disabled = isCancelled;
             document.getElementById('modal-title').textContent = isCancelled ? 'Quest reaktivieren' : 'Quest bearbeiten';
-            document.getElementById('delete-game-btn').classList.toggle('hidden', isCancelled);
-            document.getElementById('reactivate-game-btn').classList.toggle('hidden', !isCancelled);
-            
+            document.getElementById('delete-game-btn').style.display = isCancelled ? 'none' : 'inline-flex';
+            document.getElementById('reactivate-game-btn').style.display = isCancelled ? 'inline-flex' : 'none';
+
             showModal(addEditGameModal);
         }
 
@@ -1052,32 +1256,34 @@
             const formattedTime = gameDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
             let participantsHTML = game.participants.map(p => `
-                 <span class="bg-slate-700 text-slate-300 text-sm font-medium pl-2.5 pr-1.5 py-1 rounded-full flex items-center gap-1">
+                 <span class="cl-badge" style="display:inline-flex; align-items:center; gap:.35rem;">
                      ${escapeHTML(p.displayName)}
-                     ${isCreator && currentUser?.uid !== p.uid ? `<button class="remove-participant-btn text-red-400 hover:text-red-200" data-game-id="${gameId}" data-participant-uid="${p.uid}" title="Teilnehmer entfernen">&times;</button>` : ''}
-                 </span>`).join('') || '<p class="text-slate-500 text-sm">Noch keine Teilnehmer.</p>';
-            let tagsHTML = (game.tags || []).map(tag => `<span class="bg-cyan-800 text-cyan-200 text-xs font-medium mr-2 mb-2 px-2.5 py-0.5 rounded-full">${escapeHTML(tag)}</span>`).join('');
+                     ${isCreator && currentUser?.uid !== p.uid ? `<button class="remove-participant-btn" aria-label="Teilnehmer entfernen" style="background:none;border:none;color:var(--cl-err);cursor:pointer;font-size:1rem;line-height:1;" data-game-id="${gameId}" data-participant-uid="${p.uid}" title="Teilnehmer entfernen">&times;</button>` : ''}
+                 </span>`).join('') || '<p class="cl-muted" style="font-size:.9rem;">Noch keine Teilnehmer.</p>';
+            let tagsHTML = (game.tags || []).map(tag => `<span class="qb-tag">${escapeHTML(tag)}</span>`).join('');
+
+            let joinBtnClass = 'cl-btn ';
+            if (isCancelled || (isFull && !isParticipant)) joinBtnClass += 'cl-btn--muted';
+            else if (isParticipant) joinBtnClass += 'cl-btn--warn';
+            else joinBtnClass += 'cl-btn--signal';
 
             sharedQuestContent.dataset.questId = gameId;
             sharedQuestContent.innerHTML = `
-                <button id="close-shared-quest-modal" class="absolute top-4 right-4 text-slate-500 hover:text-white text-2xl">&times;</button>
-                <h3 class="text-3xl font-bold text-cyan-400 mb-2">${escapeHTML(game.gameName)}</h3>
-                <p class="text-slate-400 mb-4">Organisiert von <span class="font-semibold">${escapeHTML(game.creatorName)}</span></p>
-                <div class="space-y-4 mb-6">
-                    <div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg><span>${escapeHTML(game.location)}</span></div>
-                    <div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg><span>${formattedDate} um ${formattedTime} Uhr</span></div>
-                    ${game.duration ? `<div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path></svg><span>ca. ${game.duration} Minuten</span></div>` : ''}
-                    <div class="flex items-center text-slate-300"><svg class="w-5 h-5 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 1 1 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1Zm0 0h6v-1a6 6 0 0 0-9-5.197M15 21a6 6 0 0 0-9-5.197m0 0A5.995 5.995 0 0 0 12 12a5.995 5.995 0 0 0-3-5.197M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg><span class="${isFull ? 'text-red-400' : 'text-green-400'} font-semibold">${isFull ? 'Runde ist voll' : `${game.totalSeats - participantsCount} von ${game.totalSeats} Plätzen frei`}</span></div>
+                <button id="close-shared-quest-modal" class="qb-modal-close" aria-label="Schließen">&times;</button>
+                <h3 style="color:var(--cl-navy-600);">${escapeHTML(game.gameName)}</h3>
+                <p class="cl-muted">Organisiert von <strong>${escapeHTML(game.creatorName)}</strong></p>
+                <div class="cl-stack" style="margin: var(--cl-space-3) 0;">
+                    <div class="qb-meta-row" style="color:var(--cl-text);"><svg class="qb-icon-md" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg><span>${escapeHTML(game.location)}</span></div>
+                    <div class="qb-meta-row" style="color:var(--cl-text);"><svg class="qb-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg><span>${formattedDate} um ${formattedTime} Uhr</span></div>
+                    ${game.duration ? `<div class="qb-meta-row" style="color:var(--cl-text);"><svg class="qb-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path></svg><span>ca. ${game.duration} Minuten</span></div>` : ''}
+                    <div class="qb-meta-row"><svg class="qb-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 1 1 0 5.292M15 21H3v-1a6 6 0 0 1 12 0v1Zm0 0h6v-1a6 6 0 0 0-9-5.197M15 21a6 6 0 0 0-9-5.197m0 0A5.995 5.995 0 0 0 12 12a5.995 5.995 0 0 0-3-5.197M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg><span class="cl-badge ${isFull ? 'cl-badge--err' : 'cl-badge--ok'}">${isFull ? 'Runde ist voll' : `${game.totalSeats - participantsCount} von ${game.totalSeats} Plätzen frei`}</span></div>
                 </div>
-                ${tagsHTML ? `<div class="flex flex-wrap mb-4">${tagsHTML}</div>` : ''}
-                <div class="border-t border-slate-700 pt-4">
-                    <h4 class="font-semibold text-slate-300 mb-2">Teilnehmer (${participantsCount}/${game.totalSeats}):</h4>
-                    <div class="flex flex-wrap gap-2">${participantsHTML}</div>
-                </div>
-                ${isCreator ? `<div class="mt-4 text-center"><button id="edit-from-shared-modal-btn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg transition" data-game-id="${gameId}">${isCancelled ? 'Verwalten' : 'Bearbeiten'}</button></div>` : ''}
-                <div class="mt-6">
-                    <button class="join-leave-btn w-full font-bold py-3 px-4 rounded-lg transition ${isCancelled ? 'bg-slate-700 text-slate-500' : (isParticipant ? 'bg-amber-600 hover:bg-amber-700' : (isFull ? 'bg-slate-700 text-slate-500' : 'bg-cyan-500 hover:bg-cyan-600'))}" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>${isCancelled ? 'Abgesagt' : (isParticipant ? 'Teilnahme zurückziehen' : (isFull ? 'Voll' : 'An Quest teilnehmen'))}</button>
-                </div>
+                ${tagsHTML ? `<div class="qb-tags" style="margin-bottom:var(--cl-space-2);">${tagsHTML}</div>` : ''}
+                <hr>
+                <h4>Teilnehmer (${participantsCount}/${game.totalSeats}):</h4>
+                <div class="qb-tags">${participantsHTML}</div>
+                ${isCreator ? `<p class="cl-center" style="margin-top:var(--cl-space-3);"><button id="edit-from-shared-modal-btn" class="cl-btn cl-btn--ghost" data-game-id="${gameId}">${isCancelled ? 'Verwalten' : 'Bearbeiten'}</button></p>` : ''}
+                <button class="join-leave-btn ${joinBtnClass}" style="width:100%; margin-top:var(--cl-space-3);" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>${isCancelled ? 'Abgesagt' : (isParticipant ? 'Teilnahme zurückziehen' : (isFull ? 'Voll' : 'An Quest teilnehmen'))}</button>
             `;
         }
 
@@ -1096,7 +1302,7 @@
                 if (docSnap.exists()) { hideModal(sharedQuestModal); openEditModal(docSnap); }
                 return;
             }
-            
+
             if (removeParticipantBtn) {
                 const gameId = removeParticipantBtn.dataset.gameId;
                 const participantUid = removeParticipantBtn.dataset.participantUid;
@@ -1112,29 +1318,13 @@
                      } catch (error) { console.error("Fehler beim Entfernen:", error); showToast("Fehler beim Entfernen."); }
                 });
             } else if (joinLeaveBtn) {
-                if (!currentUser) { hideModal(sharedQuestModal); showModal(authModal); return; }
-                const gameId = joinLeaveBtn.dataset.gameId;
                 joinLeaveBtn.disabled = true;
-                const gameRef = doc(db, "spielrunden", gameId);
-                try {
-                    const docSnap = await getDoc(gameRef);
-                    if (docSnap.exists()) {
-                        const gameData = docSnap.data();
-                        const isParticipant = gameData.participants.some(p => p.uid === currentUser.uid);
-                        let newParticipants;
-                        if (isParticipant) {
-                            newParticipants = gameData.participants.filter(p => p.uid !== currentUser.uid);
-                        } else {
-                            if (gameData.participants.length < gameData.totalSeats) {
-                                newParticipants = [...gameData.participants, { uid: currentUser.uid, displayName: currentUser.displayName }];
-                            } else {
-                                showToast("Diese Runde ist bereits voll."); return;
-                            }
-                        }
-                        await updateDoc(gameRef, { participants: newParticipants });
-                        renderSharedQuestModal((await getDoc(gameRef)).data(), gameId);
-                    }
-                } catch (error) { console.error("Fehler beim Beitreten/Verlassen:", error); }
+                const updatedSnap = await toggleParticipation(joinLeaveBtn.dataset.gameId);
+                if (updatedSnap && updatedSnap.exists()) {
+                    renderSharedQuestModal(updatedSnap.data(), joinLeaveBtn.dataset.gameId);
+                } else {
+                    joinLeaveBtn.disabled = false;
+                }
             }
         });
 
