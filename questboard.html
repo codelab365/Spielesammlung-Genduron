@@ -1594,3 +1594,103 @@
                     return;
                 }
                 container.innerHTML = messages.map(m => {
+                    const isOwn = currentUser && m.uid === currentUser.uid;
+                    const time = m.createdAt ? m.createdAt.toDate().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '';
+                    return `
+                        <div class="qb-chat-msg ${isOwn ? 'qb-chat-msg--own' : ''}">
+                            <div class="qb-chat-msg__meta"><span>${escapeHTML(m.displayName || 'Unbekannt')}</span><span>${time}</span></div>
+                            <p class="qb-chat-msg__text">${escapeHTML(m.text || '')}</p>
+                        </div>`;
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            }, (error) => {
+                console.error("Fehler beim Laden des Chats:", error);
+                const container = document.getElementById('quest-chat-messages');
+                if (container) container.innerHTML = '<p class="qb-chat-empty">Chat konnte nicht geladen werden.</p>';
+            });
+        }
+
+        function stopQuestChat() {
+            if (unsubscribeFromChat) { unsubscribeFromChat(); unsubscribeFromChat = null; }
+        }
+
+        sharedQuestModal.addEventListener('click', async (e) => {
+            if (e.target.id === 'close-shared-quest-modal' || e.target === sharedQuestModal) {
+                stopQuestChat();
+                hideModal(sharedQuestModal); return;
+            }
+            if (e.target.id === 'chat-login-link') {
+                e.preventDefault();
+                showModal(authModal);
+                return;
+            }
+            const removeParticipantBtn = e.target.closest('.remove-participant-btn');
+            const joinLeaveBtn = e.target.closest('.join-leave-btn');
+            const editFromSharedBtn = e.target.closest('#edit-from-shared-modal-btn');
+
+            if (editFromSharedBtn) {
+                const gameId = editFromSharedBtn.dataset.gameId;
+                const gameRef = doc(db, "spielrunden", gameId);
+                const docSnap = await getDoc(gameRef);
+                if (docSnap.exists()) { stopQuestChat(); hideModal(sharedQuestModal); openEditModal(docSnap); }
+                return;
+            }
+
+            if (removeParticipantBtn) {
+                const gameId = removeParticipantBtn.dataset.gameId;
+                const participantUid = removeParticipantBtn.dataset.participantUid;
+                showConfirmModal('Bist du sicher, dass du diesen Teilnehmer entfernen möchtest?', async () => {
+                     const gameRef = doc(db, "spielrunden", gameId);
+                     try {
+                         const docSnap = await getDoc(gameRef);
+                         if (docSnap.exists()) {
+                             const newParticipants = docSnap.data().participants.filter(p => p.uid !== participantUid);
+                             await updateDoc(gameRef, { participants: newParticipants });
+                             renderSharedQuestModal( (await getDoc(gameRef)).data(), gameId );
+                         }
+                     } catch (error) { console.error("Fehler beim Entfernen:", error); showToast("Fehler beim Entfernen."); }
+                });
+            } else if (joinLeaveBtn) {
+                joinLeaveBtn.disabled = true;
+                const updatedSnap = await toggleParticipation(joinLeaveBtn.dataset.gameId);
+                if (updatedSnap && updatedSnap.exists()) {
+                    renderSharedQuestModal(updatedSnap.data(), joinLeaveBtn.dataset.gameId);
+                } else {
+                    joinLeaveBtn.disabled = false;
+                }
+            }
+        });
+
+        sharedQuestModal.addEventListener('submit', async (e) => {
+            const chatForm = e.target.closest('#quest-chat-form');
+            if (!chatForm) return;
+            e.preventDefault();
+            if (!currentUser) { showModal(authModal); return; }
+            const gameId = chatForm.dataset.gameId;
+            const input = document.getElementById('quest-chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            const submitBtn = chatForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            input.disabled = true;
+            try {
+                await addDoc(collection(db, "spielrunden", gameId, "messages"), {
+                    text: text.slice(0, 500),
+                    uid: currentUser.uid,
+                    displayName: currentUser.displayName,
+                    createdAt: Timestamp.now()
+                });
+                input.value = '';
+            } catch (error) {
+                console.error("Fehler beim Senden der Chat-Nachricht:", error);
+                showToast("Nachricht konnte nicht gesendet werden.");
+            } finally {
+                submitBtn.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        });
+
+    </script>
+</body>
+</html>
