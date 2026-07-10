@@ -62,6 +62,8 @@
         }
         .qb-filter-inputs { display: flex; flex-wrap: wrap; gap: var(--cl-space-2); }
         .qb-filter-inputs .cl-input { width: auto; min-width: 190px; }
+        .qb-name-search-row { display: flex; gap: var(--cl-space-2); align-items: center; }
+        .qb-name-search-row input { flex: 1; min-width: 0; }
         .qb-date-wrap { position: relative; }
         .qb-clear-date {
             position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
@@ -70,8 +72,10 @@
         }
         .qb-clear-date:hover { color: var(--cl-text); }
         .qb-chip-row { display: flex; gap: .4rem; padding: .3rem; background: var(--cl-surface-2);
-            border-radius: var(--cl-radius-pill); border: 1px solid var(--cl-line); }
-        .qb-chip-row .cl-chip { padding: .4rem .7rem; }
+            border-radius: var(--cl-radius-pill); border: 1px solid var(--cl-line);
+            overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; max-width: 100%; }
+        .qb-chip-row::-webkit-scrollbar { display: none; }
+        .qb-chip-row .cl-chip { padding: .4rem .7rem; flex-shrink: 0; }
         .qb-location-bar {
             display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem;
             padding: var(--cl-space-2); background: var(--cl-surface-2);
@@ -186,13 +190,24 @@
         .toast-leave { animation: qbFadeOut .25s ease-in; }
 
         input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
-        [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+        [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.7); }
         @media (prefers-color-scheme: dark) { input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.7); } }
 
         @media (max-width: 640px) {
             .qb-header-actions .qb-coffee-label { display: none; }
             .qb-form-row { grid-template-columns: 1fr; }
+            .cl-card--pad { padding: var(--cl-space-3); }
+            .qb-modal-overlay { padding: .6rem; align-items: flex-end; }
+            .qb-modal, .qb-modal--lg { max-width: 100%; }
+            .modal-enter { animation: qbSlideUp .22s ease-out; }
+            .qb-quest-grid { gap: var(--cl-space-2); }
         }
+        @media (max-width: 480px) {
+            .qb-lang-toggle.qb-header-lang { display: none; }
+            .qb-header-actions { gap: .4rem; }
+            .qb-tagline { display: none; }
+        }
+        @keyframes qbSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Quest-Chat */
         .qb-chat-section { border-top: 1px solid var(--cl-line); margin-top: var(--cl-space-3); padding-top: var(--cl-space-3); }
@@ -236,7 +251,8 @@
         .qb-bgg-badge { font-size: .72rem; font-weight: 600; padding: .1rem .5rem; border-radius: var(--cl-radius-pill); }
         .qb-bgg-badge--rating { background: color-mix(in srgb, var(--cl-warn) 20%, transparent); color: var(--cl-warn); }
         .qb-bgg-badge--weight { background: color-mix(in srgb, var(--cl-signal) 18%, transparent); color: var(--cl-navy-600); }
-        [data-theme="dark"] .qb-bgg-badge--weight, @media (prefers-color-scheme: dark) { .qb-bgg-badge--weight { color: var(--cl-signal); } }
+        [data-theme="dark"] .qb-bgg-badge--weight { color: var(--cl-signal); }
+        @media (prefers-color-scheme: dark) { .qb-bgg-badge--weight { color: var(--cl-signal); } }
         .qb-bgg-match__remove { background: none; border: none; color: var(--cl-err); cursor: pointer;
             font-size: 1.1rem; line-height: 1; align-self: flex-start; }
 
@@ -261,7 +277,7 @@
             </div>
             <div class="cl-header__spacer"></div>
             <div class="qb-header-actions">
-                <div class="qb-lang-toggle" role="group" aria-label="Sprache / Language">
+                <div class="qb-lang-toggle qb-header-lang" role="group" aria-label="Sprache / Language">
                     <button type="button" class="cl-chip qb-lang-btn" data-lang="de" aria-pressed="true">DE</button>
                     <button type="button" class="cl-chip qb-lang-btn" data-lang="en" aria-pressed="false">EN</button>
                 </div>
@@ -382,7 +398,7 @@
                 <div class="cl-stack">
                     <div>
                         <label for="game-name" class="cl-label" data-i18n="gameNameLabel">Spiel (Quest)</label>
-                        <div class="cl-flex">
+                        <div class="qb-name-search-row">
                             <input type="text" id="game-name" class="cl-input" required maxlength="80">
                             <button type="button" id="bgg-search-btn" class="cl-btn cl-btn--ghost cl-btn--sm" style="white-space:nowrap;" data-i18n="bggSearchBtn">🎲 BGG</button>
                         </div>
