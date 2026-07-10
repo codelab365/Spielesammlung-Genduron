@@ -210,6 +210,40 @@
         .qb-chat-form { display: flex; gap: .5rem; }
         .qb-chat-form .cl-input { flex: 1; }
         .qb-chat-locked { font-size: .85rem; color: var(--cl-muted); text-align: center; }
+
+        /* BGG-Suche im Quest-Formular */
+        .qb-bgg-panel { margin-top: .5rem; border: 1px solid var(--cl-line); border-radius: var(--cl-radius-sm);
+            background: var(--cl-surface-2); max-height: 220px; overflow-y: auto; }
+        .qb-bgg-results { padding: .35rem; }
+        .qb-bgg-result-item { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .6rem;
+            border-radius: var(--cl-radius-sm); cursor: pointer; font-size: .88rem; }
+        .qb-bgg-result-item:hover { background: var(--cl-surface); }
+        .qb-bgg-result-item__year { color: var(--cl-muted); font-size: .8rem; flex-shrink: 0; }
+        .qb-bgg-hint { padding: .6rem; font-size: .85rem; color: var(--cl-muted); }
+        .qb-bgg-match {
+            margin-top: .6rem; display: flex; gap: .7rem; padding: .6rem; border-radius: var(--cl-radius-sm);
+            border: 1px solid var(--cl-line); background: var(--cl-surface-2);
+        }
+        .qb-bgg-match img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; flex-shrink: 0;
+            background: var(--cl-surface); }
+        .qb-bgg-match__body { min-width: 0; flex: 1; }
+        .qb-bgg-match__title { font-weight: 600; font-size: .9rem; }
+        .qb-bgg-match__badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .3rem; }
+        .qb-bgg-badge { font-size: .72rem; font-weight: 600; padding: .1rem .5rem; border-radius: var(--cl-radius-pill); }
+        .qb-bgg-badge--rating { background: color-mix(in srgb, var(--cl-warn) 20%, transparent); color: var(--cl-warn); }
+        .qb-bgg-badge--weight { background: color-mix(in srgb, var(--cl-signal) 18%, transparent); color: var(--cl-navy-600); }
+        [data-theme="dark"] .qb-bgg-badge--weight, @media (prefers-color-scheme: dark) { .qb-bgg-badge--weight { color: var(--cl-signal); } }
+        .qb-bgg-match__remove { background: none; border: none; color: var(--cl-err); cursor: pointer;
+            font-size: 1.1rem; line-height: 1; align-self: flex-start; }
+
+        /* BGG-Anreicherung auf Karte & im Detail */
+        .qb-cover-thumb { width: 52px; height: 52px; object-fit: contain; border-radius: 6px; background: var(--cl-surface-2);
+            border: 1px solid var(--cl-line); flex-shrink: 0; }
+        .qb-cover-lg { width: 100%; max-width: 220px; border-radius: var(--cl-radius-sm); border: 1px solid var(--cl-line);
+            background: var(--cl-surface-2); object-fit: contain; margin-bottom: var(--cl-space-2); }
+        .qb-desc-clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+            font-size: .88rem; color: var(--cl-muted); }
+        .qb-desc-clamp.qb-expanded { display: block; -webkit-line-clamp: unset; }
     </style>
 </head>
 <body>
@@ -338,7 +372,17 @@
             <form id="add-edit-game-form">
                 <input type="hidden" id="edit-game-id">
                 <div class="cl-stack">
-                    <div><label for="game-name" class="cl-label">Spiel (Quest)</label><input type="text" id="game-name" class="cl-input" required maxlength="80"></div>
+                    <div>
+                        <label for="game-name" class="cl-label">Spiel (Quest)</label>
+                        <div class="cl-flex">
+                            <input type="text" id="game-name" class="cl-input" required maxlength="80">
+                            <button type="button" id="bgg-search-btn" class="cl-btn cl-btn--ghost cl-btn--sm" style="white-space:nowrap;">🎲 BGG</button>
+                        </div>
+                        <div id="bgg-search-panel" class="qb-bgg-panel cl-hidden">
+                            <div id="bgg-search-results" class="qb-bgg-results"></div>
+                        </div>
+                        <div id="bgg-match-preview" class="qb-bgg-match cl-hidden"></div>
+                    </div>
                     <div>
                         <label for="location-type" class="cl-label">Spielort</label>
                         <select id="location-type" class="cl-select">
@@ -530,6 +574,75 @@
             }[match]));
         }
 
+        // --- BoardGameGeek (BGG) Integration ---
+        // Hinweis: liegt im Klartext im Quellcode (Ansicht->Seitenquelltext sichtbar).
+        // Für ein privates/nicht-kommerzielles Projekt unkritisch, aber die Seite
+        // sollte deshalb nicht als Basis für ein kommerzielles Angebot dienen, ohne
+        // den Token serverseitig zu verstecken.
+        const BGG_API_TOKEN = 'cb319383-f7f5-4e5b-bc40-78090627231e';
+        const bggDetailCache = {}; // bggId -> geparste Detail-Objekte, vermeidet doppelte Abfragen
+        let selectedBggMatch = null; // aktuell im Formular ausgewähltes BGG-Spiel (oder null)
+
+        async function callBggApi(endpoint, params = {}) {
+            const url = new URL(`https://boardgamegeek.com/xmlapi2/${endpoint}`);
+            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            const headers = new Headers();
+            if (BGG_API_TOKEN) headers.append('Authorization', `Bearer ${BGG_API_TOKEN}`);
+            let response = await fetch(url.toString(), { method: 'GET', headers });
+            let retries = 0;
+            while (response.status === 202 && retries < 5) {
+                retries++;
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                response = await fetch(url.toString(), { method: 'GET', headers });
+            }
+            if (!response.ok) throw new Error(`BGG HTTP Fehler ${response.status}`);
+            const xmlText = await response.text();
+            const xmlDoc = new DOMParser().parseFromString(xmlText, "application/xml");
+            if (xmlDoc.querySelector("parsererror")) throw new Error("Fehler beim Parsen der BGG-Antwort.");
+            return xmlDoc;
+        }
+
+        function decodeHTML(html) {
+            if (!html) return null;
+            const txt = document.createElement("textarea");
+            txt.innerHTML = html;
+            return txt.value;
+        }
+
+        function bggComplexityLabel(weight) {
+            if (weight == null) return '';
+            if (weight < 1.5) return 'Leicht';
+            if (weight < 2.5) return 'Mittelleicht';
+            if (weight < 3.5) return 'Mittel';
+            if (weight < 4.5) return 'Anspruchsvoll';
+            return 'Komplex';
+        }
+
+        function parseBggDetails(xmlDoc) {
+            const item = xmlDoc.querySelector('item');
+            if (!item) return null;
+            const getTxt = (selector) => item.querySelector(selector)?.textContent || null;
+            const getPrimaryName = () => {
+                const names = item.querySelectorAll('name');
+                for (const n of names) if (n.getAttribute('type') === 'primary') return n.getAttribute('value');
+                return names.length > 0 ? names[0].getAttribute('value') : null;
+            };
+            const yearNode = item.querySelector('yearpublished');
+            const ratingNode = item.querySelector('statistics ratings average');
+            const weightNode = item.querySelector('statistics ratings averageweight');
+            const usersRatedNode = item.querySelector('statistics ratings usersrated');
+            return {
+                bggId: parseInt(item.getAttribute('id')) || null,
+                bggName: getPrimaryName(),
+                bggYear: yearNode ? yearNode.getAttribute('value') : null,
+                bggImageUrl: getTxt('image') || getTxt('thumbnail'),
+                bggDescription: decodeHTML(getTxt('description')),
+                bggRating: ratingNode ? parseFloat(ratingNode.getAttribute('value')) : null,
+                bggComplexity: weightNode ? parseFloat(weightNode.getAttribute('value')) : null,
+                bggRatingsCount: usersRatedNode ? parseInt(usersRatedNode.getAttribute('value')) : null
+            };
+        }
+
         // Custom Toast Notification
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -662,10 +775,92 @@
              document.getElementById('edit-game-id').value = '';
              document.getElementById('delete-game-btn').style.display = 'none';
              document.getElementById('reactivate-game-btn').style.display = 'none';
+             clearBggMatch();
              const maxDate = new Date();
              maxDate.setMonth(maxDate.getMonth() + 3);
              document.getElementById('game-date').setAttribute('max', maxDate.toISOString().split('T')[0]);
              showModal(addEditGameModal);
+        });
+
+        // --- BGG-Suche im Quest-Formular ---
+        function renderBggMatchPreview(match) {
+            const el = document.getElementById('bgg-match-preview');
+            const ratingHtml = match.bggRating != null
+                ? `<span class="qb-bgg-badge qb-bgg-badge--rating">⭐ ${match.bggRating.toFixed(1)}${match.bggRatingsCount != null ? ` (${match.bggRatingsCount})` : ''}</span>` : '';
+            const weightHtml = match.bggComplexity != null
+                ? `<span class="qb-bgg-badge qb-bgg-badge--weight">⚙️ ${match.bggComplexity.toFixed(1)} · ${bggComplexityLabel(match.bggComplexity)}</span>` : '';
+            el.innerHTML = `
+                ${match.bggImageUrl ? `<img src="${match.bggImageUrl}" alt="">` : ''}
+                <div class="qb-bgg-match__body">
+                    <div class="qb-bgg-match__title">${escapeHTML(match.bggName || 'Unbekannt')} ${match.bggYear ? `<span class="cl-muted" style="font-weight:400;">(${escapeHTML(match.bggYear)})</span>` : ''}</div>
+                    <div class="qb-bgg-match__badges">${ratingHtml}${weightHtml}</div>
+                </div>
+                <button type="button" class="qb-bgg-match__remove" title="BGG-Verknüpfung entfernen" aria-label="BGG-Verknüpfung entfernen">&times;</button>
+            `;
+            el.classList.remove('cl-hidden');
+            document.getElementById('bgg-search-panel').classList.add('cl-hidden');
+        }
+
+        function clearBggMatch() {
+            selectedBggMatch = null;
+            document.getElementById('bgg-match-preview').classList.add('cl-hidden');
+            document.getElementById('bgg-match-preview').innerHTML = '';
+            document.getElementById('bgg-search-panel').classList.add('cl-hidden');
+            document.getElementById('bgg-search-results').innerHTML = '';
+        }
+
+        document.getElementById('bgg-match-preview').addEventListener('click', (e) => {
+            if (e.target.closest('.qb-bgg-match__remove')) clearBggMatch();
+        });
+
+        document.getElementById('bgg-search-btn').addEventListener('click', async () => {
+            const query = document.getElementById('game-name').value.trim();
+            const panel = document.getElementById('bgg-search-panel');
+            const results = document.getElementById('bgg-search-results');
+            if (!query) { showToast('Bitte zuerst einen Spielnamen eingeben.'); return; }
+            panel.classList.remove('cl-hidden');
+            results.innerHTML = '<p class="qb-bgg-hint">Suche auf BGG...</p>';
+            try {
+                const xmlDoc = await callBggApi('search', { query, type: 'boardgame' });
+                const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 20);
+                if (items.length === 0) {
+                    results.innerHTML = '<p class="qb-bgg-hint">Keine Treffer auf BGG gefunden.</p>';
+                    return;
+                }
+                results.innerHTML = items.map(item => {
+                    const id = item.getAttribute('id');
+                    const nameNode = item.querySelector('name');
+                    const yearNode = item.querySelector('yearpublished');
+                    const name = nameNode ? nameNode.getAttribute('value') : 'Unbekannt';
+                    const year = yearNode ? yearNode.getAttribute('value') : '';
+                    return `<div class="qb-bgg-result-item" data-id="${id}"><span>${escapeHTML(name)}</span><span class="qb-bgg-result-item__year">${escapeHTML(year)}</span></div>`;
+                }).join('');
+            } catch (error) {
+                console.error('BGG-Suche fehlgeschlagen:', error);
+                results.innerHTML = '<p class="qb-bgg-hint">Suche fehlgeschlagen (evtl. CORS/Netzwerk). Du kannst den Namen weiter frei eingeben.</p>';
+            }
+        });
+
+        document.getElementById('bgg-search-results').addEventListener('click', async (e) => {
+            const item = e.target.closest('.qb-bgg-result-item');
+            if (!item) return;
+            const id = item.dataset.id;
+            const results = document.getElementById('bgg-search-results');
+            results.innerHTML = '<p class="qb-bgg-hint">Lade Details...</p>';
+            try {
+                let match = bggDetailCache[id];
+                if (!match) {
+                    const xmlDoc = await callBggApi('thing', { id, stats: 1 });
+                    match = parseBggDetails(xmlDoc);
+                    if (match) bggDetailCache[id] = match;
+                }
+                if (!match) throw new Error('Keine Details gefunden.');
+                selectedBggMatch = match;
+                renderBggMatchPreview(match);
+            } catch (error) {
+                console.error('BGG-Details fehlgeschlagen:', error);
+                results.innerHTML = '<p class="qb-bgg-hint">Details konnten nicht geladen werden.</p>';
+            }
         });
 
         document.getElementById('cancel-add-game').addEventListener('click', () => hideModal(addEditGameModal));
@@ -856,6 +1051,12 @@
                     totalSeats: parseInt(document.getElementById('total-seats').value, 10),
                     duration: parseInt(document.getElementById('game-duration').value, 10) || null,
                     tags: selectedTags,
+                    bggId: selectedBggMatch?.bggId ?? null,
+                    bggImageUrl: selectedBggMatch?.bggImageUrl ?? null,
+                    bggDescription: selectedBggMatch?.bggDescription ?? null,
+                    bggRating: selectedBggMatch?.bggRating ?? null,
+                    bggComplexity: selectedBggMatch?.bggComplexity ?? null,
+                    bggRatingsCount: selectedBggMatch?.bggRatingsCount ?? null,
                 };
 
                 if (gameId) {
@@ -1183,6 +1384,12 @@
             card.dataset.gameId = gameId;
 
             let tagsHTML = (game.tags || []).map(tag => `<span class="qb-tag">${escapeHTML(tag)}</span>`).join('');
+            let bggBadgesHTML = '';
+            if (game.bggRating != null || game.bggComplexity != null) {
+                const r = game.bggRating != null ? `<span class="qb-bgg-badge qb-bgg-badge--rating">⭐ ${game.bggRating.toFixed(1)}</span>` : '';
+                const w = game.bggComplexity != null ? `<span class="qb-bgg-badge qb-bgg-badge--weight">⚙️ ${bggComplexityLabel(game.bggComplexity)}</span>` : '';
+                bggBadgesHTML = `<div class="qb-tags" style="margin-top:.3rem;">${r}${w}</div>`;
+            }
 
             let joinBtnClass = 'cl-btn cl-btn--sm ';
             if (isCancelled || (isFull && !isParticipant)) joinBtnClass += 'cl-btn--muted';
@@ -1193,7 +1400,10 @@
                 ${isCancelled ? '<div class="qb-cancelled-overlay"><span>ABGESAGT</span></div>' : ''}
                 <div class="qb-quest-card__body ${isCancelled ? 'qb-dimmed' : ''}">
                     <div class="qb-quest-card__top">
-                        <h3 class="qb-quest-card__title" style="color:var(--cl-navy-600);">${escapeHTML(game.gameName)}</h3>
+                        <div class="cl-flex" style="align-items:flex-start; min-width:0; padding-right:4.5rem;">
+                            ${game.bggImageUrl ? `<img src="${game.bggImageUrl}" alt="" class="qb-cover-thumb">` : ''}
+                            <h3 class="qb-quest-card__title" style="color:var(--cl-navy-600); padding-right:0;">${escapeHTML(game.gameName)}</h3>
+                        </div>
                         <div class="qb-quest-card__actions">
                             <button class="share-quest-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="Quest teilen" aria-label="Quest teilen" data-game-id="${gameId}">🔗</button>
                             ${isCreator ? `
@@ -1210,6 +1420,7 @@
                         <svg class="qb-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg>
                         <span>${formattedDate}, ${formattedTime} Uhr ${game.duration ? `(ca. ${game.duration} Min.)` : ''}</span>
                     </div>
+                    ${bggBadgesHTML}
                     <div class="qb-tags">${tagsHTML}</div>
                 </div>
                 <div class="qb-card-footer ${isCancelled ? 'qb-dimmed' : ''}">
@@ -1258,6 +1469,22 @@
             });
             document.getElementById('organizer-participates').checked = game.participants.some(p => p.uid === game.creatorId);
 
+            if (game.bggId) {
+                selectedBggMatch = {
+                    bggId: game.bggId,
+                    bggName: game.gameName,
+                    bggYear: null,
+                    bggImageUrl: game.bggImageUrl || null,
+                    bggDescription: game.bggDescription || null,
+                    bggRating: game.bggRating ?? null,
+                    bggComplexity: game.bggComplexity ?? null,
+                    bggRatingsCount: game.bggRatingsCount ?? null
+                };
+                renderBggMatchPreview(selectedBggMatch);
+            } else {
+                clearBggMatch();
+            }
+
             const isCancelled = game.cancelled || false;
             document.querySelectorAll('#add-edit-game-form *:not(button)').forEach(el => el.disabled = isCancelled);
             document.getElementById('submit-btn').disabled = isCancelled;
@@ -1285,6 +1512,23 @@
                  </span>`).join('') || '<p class="cl-muted" style="font-size:.9rem;">Noch keine Teilnehmer.</p>';
             let tagsHTML = (game.tags || []).map(tag => `<span class="qb-tag">${escapeHTML(tag)}</span>`).join('');
 
+            let bggBlockHTML = '';
+            if (game.bggImageUrl || game.bggRating != null || game.bggComplexity != null || game.bggDescription) {
+                const r = game.bggRating != null ? `<span class="qb-bgg-badge qb-bgg-badge--rating">⭐ ${game.bggRating.toFixed(1)} / 10${game.bggRatingsCount != null ? ` <span style="opacity:.75;">(${game.bggRatingsCount})</span>` : ''}</span>` : '';
+                const w = game.bggComplexity != null ? `<span class="qb-bgg-badge qb-bgg-badge--weight">⚙️ ${game.bggComplexity.toFixed(1)} / 5 · ${bggComplexityLabel(game.bggComplexity)}</span>` : '';
+                bggBlockHTML = `
+                    <div class="cl-flex" style="align-items:flex-start; margin: var(--cl-space-2) 0;">
+                        ${game.bggImageUrl ? `<img src="${game.bggImageUrl}" alt="" class="qb-cover-lg" style="margin-bottom:0;">` : ''}
+                        <div style="min-width:0;">
+                            <div class="qb-bgg-match__badges">${r}${w}</div>
+                            ${game.bggDescription ? `
+                                <p id="quest-desc" class="qb-desc-clamp" style="margin-top:.5rem;">${escapeHTML(game.bggDescription)}</p>
+                                <button type="button" id="toggle-quest-desc-btn" style="background:none; border:none; color:var(--cl-link); cursor:pointer; font-size:.85rem; padding:0; margin-top:.2rem;">Mehr anzeigen</button>
+                            ` : ''}
+                        </div>
+                    </div>`;
+            }
+
             let joinBtnClass = 'cl-btn ';
             if (isCancelled || (isFull && !isParticipant)) joinBtnClass += 'cl-btn--muted';
             else if (isParticipant) joinBtnClass += 'cl-btn--warn';
@@ -1295,6 +1539,7 @@
                 <button id="close-shared-quest-modal" class="qb-modal-close" aria-label="Schließen">&times;</button>
                 <h3 style="color:var(--cl-navy-600);">${escapeHTML(game.gameName)}</h3>
                 <p class="cl-muted">Organisiert von <strong>${escapeHTML(game.creatorName)}</strong></p>
+                ${bggBlockHTML}
                 <div class="cl-stack" style="margin: var(--cl-space-3) 0;">
                     <div class="qb-meta-row" style="color:var(--cl-text);"><svg class="qb-icon-md" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg><span>${escapeHTML(game.location)}</span></div>
                     <div class="qb-meta-row" style="color:var(--cl-text);"><svg class="qb-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"></path></svg><span>${formattedDate} um ${formattedTime} Uhr</span></div>
@@ -1319,6 +1564,14 @@
                     ` : `<p class="qb-chat-locked">Bitte <a href="#" id="chat-login-link">einloggen</a>, um im Chat mitzuschreiben.</p>`}
                 </div>
             `;
+            const descToggleBtn = document.getElementById('toggle-quest-desc-btn');
+            if (descToggleBtn) {
+                descToggleBtn.addEventListener('click', () => {
+                    const descEl = document.getElementById('quest-desc');
+                    descEl.classList.toggle('qb-expanded');
+                    descToggleBtn.textContent = descEl.classList.contains('qb-expanded') ? 'Weniger anzeigen' : 'Mehr anzeigen';
+                });
+            }
             listenToQuestChat(gameId);
         }
 
@@ -1341,103 +1594,3 @@
                     return;
                 }
                 container.innerHTML = messages.map(m => {
-                    const isOwn = currentUser && m.uid === currentUser.uid;
-                    const time = m.createdAt ? m.createdAt.toDate().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '';
-                    return `
-                        <div class="qb-chat-msg ${isOwn ? 'qb-chat-msg--own' : ''}">
-                            <div class="qb-chat-msg__meta"><span>${escapeHTML(m.displayName || 'Unbekannt')}</span><span>${time}</span></div>
-                            <p class="qb-chat-msg__text">${escapeHTML(m.text || '')}</p>
-                        </div>`;
-                }).join('');
-                container.scrollTop = container.scrollHeight;
-            }, (error) => {
-                console.error("Fehler beim Laden des Chats:", error);
-                const container = document.getElementById('quest-chat-messages');
-                if (container) container.innerHTML = '<p class="qb-chat-empty">Chat konnte nicht geladen werden.</p>';
-            });
-        }
-
-        function stopQuestChat() {
-            if (unsubscribeFromChat) { unsubscribeFromChat(); unsubscribeFromChat = null; }
-        }
-
-        sharedQuestModal.addEventListener('click', async (e) => {
-            if (e.target.id === 'close-shared-quest-modal' || e.target === sharedQuestModal) {
-                stopQuestChat();
-                hideModal(sharedQuestModal); return;
-            }
-            if (e.target.id === 'chat-login-link') {
-                e.preventDefault();
-                showModal(authModal);
-                return;
-            }
-            const removeParticipantBtn = e.target.closest('.remove-participant-btn');
-            const joinLeaveBtn = e.target.closest('.join-leave-btn');
-            const editFromSharedBtn = e.target.closest('#edit-from-shared-modal-btn');
-
-            if (editFromSharedBtn) {
-                const gameId = editFromSharedBtn.dataset.gameId;
-                const gameRef = doc(db, "spielrunden", gameId);
-                const docSnap = await getDoc(gameRef);
-                if (docSnap.exists()) { stopQuestChat(); hideModal(sharedQuestModal); openEditModal(docSnap); }
-                return;
-            }
-
-            if (removeParticipantBtn) {
-                const gameId = removeParticipantBtn.dataset.gameId;
-                const participantUid = removeParticipantBtn.dataset.participantUid;
-                showConfirmModal('Bist du sicher, dass du diesen Teilnehmer entfernen möchtest?', async () => {
-                     const gameRef = doc(db, "spielrunden", gameId);
-                     try {
-                         const docSnap = await getDoc(gameRef);
-                         if (docSnap.exists()) {
-                             const newParticipants = docSnap.data().participants.filter(p => p.uid !== participantUid);
-                             await updateDoc(gameRef, { participants: newParticipants });
-                             renderSharedQuestModal( (await getDoc(gameRef)).data(), gameId );
-                         }
-                     } catch (error) { console.error("Fehler beim Entfernen:", error); showToast("Fehler beim Entfernen."); }
-                });
-            } else if (joinLeaveBtn) {
-                joinLeaveBtn.disabled = true;
-                const updatedSnap = await toggleParticipation(joinLeaveBtn.dataset.gameId);
-                if (updatedSnap && updatedSnap.exists()) {
-                    renderSharedQuestModal(updatedSnap.data(), joinLeaveBtn.dataset.gameId);
-                } else {
-                    joinLeaveBtn.disabled = false;
-                }
-            }
-        });
-
-        sharedQuestModal.addEventListener('submit', async (e) => {
-            const chatForm = e.target.closest('#quest-chat-form');
-            if (!chatForm) return;
-            e.preventDefault();
-            if (!currentUser) { showModal(authModal); return; }
-            const gameId = chatForm.dataset.gameId;
-            const input = document.getElementById('quest-chat-input');
-            const text = input.value.trim();
-            if (!text) return;
-            const submitBtn = chatForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            input.disabled = true;
-            try {
-                await addDoc(collection(db, "spielrunden", gameId, "messages"), {
-                    text: text.slice(0, 500),
-                    uid: currentUser.uid,
-                    displayName: currentUser.displayName,
-                    createdAt: Timestamp.now()
-                });
-                input.value = '';
-            } catch (error) {
-                console.error("Fehler beim Senden der Chat-Nachricht:", error);
-                showToast("Nachricht konnte nicht gesendet werden.");
-            } finally {
-                submitBtn.disabled = false;
-                input.disabled = false;
-                input.focus();
-            }
-        });
-
-    </script>
-</body>
-</html>
