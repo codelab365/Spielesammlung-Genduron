@@ -103,9 +103,9 @@
         .qb-quest-card:hover { transform: translateY(-2px); box-shadow: var(--cl-shadow-lg); }
         .qb-quest-card__body { flex-grow: 1; }
         .qb-quest-card__top { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
-        .qb-quest-card__title { margin: 0; padding-right: 4.5rem; }
+        .qb-quest-card__title { margin: 0; padding-right: 5.75rem; }
         .qb-quest-card__actions { position: absolute; top: var(--cl-space-3); right: var(--cl-space-3);
-            display: flex; gap: .4rem; z-index: 5; }
+            display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; width: 88px; z-index: 5; }
         .qb-meta-row { display: flex; align-items: center; gap: .5rem; color: var(--cl-muted); font-size: .9rem; margin: .3rem 0; }
         .qb-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
         .qb-tag {
@@ -178,6 +178,13 @@
             padding-right: .5rem; }
         .qb-legal-body h3 { color: var(--cl-text); font-size: 1rem; margin-top: var(--cl-space-3); }
         .qb-legal-body p { margin-bottom: .8rem; }
+
+        /* "Zum Kalender hinzufügen" — große, gut antippbare Optionen */
+        .qb-cal-options { display: flex; flex-direction: column; gap: .6rem; }
+        .qb-cal-option {
+            width: 100%; justify-content: flex-start; gap: .7rem;
+            font-size: .95rem; padding: .9rem 1.1rem; text-decoration: none;
+        }
 
         /* Toasts */
         #toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100;
@@ -511,6 +518,23 @@
         </div>
     </div>
 
+    <div id="calendar-modal" class="qb-modal-overlay cl-hidden">
+        <div class="cl-card cl-card--pad qb-modal qb-modal--sm modal-enter">
+             <button id="close-calendar-modal" class="qb-modal-close" aria-label="Schließen" data-i18n-aria="close">&times;</button>
+             <h3 data-i18n="addToCalendar">Zum Kalender hinzufügen</h3>
+             <p id="calendar-modal-quest-name" class="cl-muted" style="margin-bottom:.25rem;"></p>
+             <p class="cl-muted" style="font-size:.85rem; margin-bottom:1rem;" data-i18n="addToCalendarHint">Der Termin wird in deinem eigenen Kalender angelegt, mit dem Link zu dieser Quest als Beschreibung.</p>
+             <div class="qb-cal-options">
+                 <a id="calendar-google-link" href="#" target="_blank" rel="noopener noreferrer" class="cl-btn cl-btn--signal qb-cal-option">
+                     <span aria-hidden="true">📆</span> <span data-i18n="googleCalendarOption">Google Kalender</span>
+                 </a>
+                 <button id="calendar-ics-btn" type="button" class="cl-btn cl-btn--ghost qb-cal-option">
+                     <span aria-hidden="true">📥</span> <span data-i18n="icsDownloadOption">Andere (Apple / Outlook / .ics-Datei)</span>
+                 </button>
+             </div>
+        </div>
+    </div>
+
     <!-- Confirmation Modal -->
     <div id="confirm-modal" class="qb-modal-overlay cl-hidden">
         <div class="cl-card cl-card--pad qb-modal qb-modal--sm modal-enter cl-center">
@@ -591,6 +615,7 @@
         const imprintModal = document.getElementById('imprint-modal');
         const privacyModal = document.getElementById('privacy-modal');
         const helpModal = document.getElementById('help-modal');
+        const calendarModal = document.getElementById('calendar-modal');
         const questListContainer = document.getElementById('quest-list-container');
         const confirmModal = document.getElementById('confirm-modal');
 
@@ -703,6 +728,11 @@
                 removeParticipant: 'Teilnehmer entfernen',
                 joinQuestBtn: 'An Quest teilnehmen', leaveQuestBtn: 'Teilnahme zurückziehen',
                 readMore: 'Mehr anzeigen', readLess: 'Weniger anzeigen',
+                addToCalendar: 'Zum Kalender hinzufügen',
+                addToCalendarHint: 'Der Termin wird in deinem eigenen Kalender angelegt, mit dem Link zu dieser Quest als Beschreibung.',
+                googleCalendarOption: 'Google Kalender',
+                icsDownloadOption: 'Andere (Apple / Outlook / .ics-Datei)',
+                icsDescriptionPrefix: 'Quest-Link',
                 chatTitle: '💬 Quest-Chat', chatPlaceholder: 'Nachricht an alle...', chatSend: 'Senden',
                 chatLoading: 'Lade Nachrichten...', chatEmpty: 'Noch keine Nachrichten. Sei die/der Erste!',
                 chatLoadFailed: 'Chat konnte nicht geladen werden.', chatSendFailed: 'Nachricht konnte nicht gesendet werden.',
@@ -819,6 +849,11 @@
                 removeParticipant: 'Remove participant',
                 joinQuestBtn: 'Join quest', leaveQuestBtn: 'Leave quest',
                 readMore: 'Read more', readLess: 'Read less',
+                addToCalendar: 'Add to calendar',
+                addToCalendarHint: 'The event will be added to your own calendar, with the link to this quest as the description.',
+                googleCalendarOption: 'Google Calendar',
+                icsDownloadOption: 'Other (Apple / Outlook / .ics file)',
+                icsDescriptionPrefix: 'Quest link',
                 chatTitle: '💬 Quest chat', chatPlaceholder: 'Message everyone...', chatSend: 'Send',
                 chatLoading: 'Loading messages...', chatEmpty: 'No messages yet. Be the first!',
                 chatLoadFailed: 'Could not load the chat.', chatSendFailed: 'Message could not be sent.',
@@ -988,6 +1023,99 @@
             });
         }
 
+        function getQuestShareUrl(gameId) {
+            return `${window.location.origin}${window.location.pathname}?quest=${gameId}`;
+        }
+
+        // --- "Zum Kalender hinzufügen" — funktioniert bewusst ohne Login/Teilnahme,
+        // rein clientseitig. Bietet einen direkten Google-Kalender-Link und eine
+        // universelle .ics-Datei (Apple Kalender, Outlook, Thunderbird, etc.). ---
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function toICSDateUTC(date) {
+            return date.getUTCFullYear().toString() +
+                pad2(date.getUTCMonth() + 1) +
+                pad2(date.getUTCDate()) + 'T' +
+                pad2(date.getUTCHours()) +
+                pad2(date.getUTCMinutes()) +
+                pad2(date.getUTCSeconds()) + 'Z';
+        }
+
+        function escapeICSText(str) {
+            return String(str || '')
+                .replace(/\\/g, '\\\\')
+                .replace(/;/g, '\\;')
+                .replace(/,/g, '\\,')
+                .replace(/\n/g, '\\n');
+        }
+
+        function getQuestEventWindow(game) {
+            const start = game.dateTime.toDate();
+            const durationMin = game.duration || 120; // Fallback, falls keine Dauer angegeben ist
+            const end = new Date(start.getTime() + durationMin * 60000);
+            return { start, end };
+        }
+
+        function buildICS(game, gameId) {
+            const { start, end } = getQuestEventWindow(game);
+            const shareUrl = getQuestShareUrl(gameId);
+            const description = `${t('icsDescriptionPrefix')}: ${shareUrl}`;
+            const lines = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//BoardOrbit//Questboard//DE',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                'BEGIN:VEVENT',
+                `UID:${gameId}@boardorbit.quest`,
+                `DTSTAMP:${toICSDateUTC(new Date())}`,
+                `DTSTART:${toICSDateUTC(start)}`,
+                `DTEND:${toICSDateUTC(end)}`,
+                `SUMMARY:${escapeICSText(game.gameName)}`,
+                `LOCATION:${escapeICSText(game.location)}`,
+                `DESCRIPTION:${escapeICSText(description)}`,
+                `URL:${shareUrl}`,
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ];
+            return lines.join('\r\n');
+        }
+
+        function downloadICS(game, gameId) {
+            const icsContent = buildICS(game, gameId);
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const safeName = (game.gameName || 'quest').replace(/[^a-z0-9äöüßÄÖÜ \-]/gi, '').trim().replace(/\s+/g, '_') || 'quest';
+            a.download = `${safeName}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function buildGoogleCalendarUrl(game, gameId) {
+            const { start, end } = getQuestEventWindow(game);
+            const shareUrl = getQuestShareUrl(gameId);
+            const params = new URLSearchParams({
+                action: 'TEMPLATE',
+                text: game.gameName || '',
+                dates: `${toICSDateUTC(start)}/${toICSDateUTC(end)}`,
+                details: `${t('icsDescriptionPrefix')}: ${shareUrl}`,
+                location: game.location || ''
+            });
+            return `https://calendar.google.com/calendar/render?${params.toString()}`;
+        }
+
+        let calendarModalContext = null;
+        function openCalendarModal(game, gameId) {
+            calendarModalContext = { game, gameId };
+            document.getElementById('calendar-modal-quest-name').textContent = game.gameName || '';
+            document.getElementById('calendar-google-link').href = buildGoogleCalendarUrl(game, gameId);
+            showModal(calendarModal);
+        }
+
         // --- Join / Leave a quest, race-condition safe via a Firestore transaction ---
         // (previously this logic was duplicated in two places and used a plain
         // getDoc()+updateDoc(), which lets two simultaneous clicks both pass the
@@ -1030,6 +1158,7 @@
         questListContainer.addEventListener('click', async (e) => {
             const editBtn = e.target.closest('.edit-game-btn');
             const shareBtn = e.target.closest('.share-quest-btn');
+            const calendarBtn = e.target.closest('.add-to-calendar-btn');
             const joinLeaveBtn = e.target.closest('.join-leave-btn');
             const cancelBtn = e.target.closest('.cancel-game-btn');
             const viewBtn = e.target.closest('.view-quest-btn');
@@ -1043,8 +1172,17 @@
                 }
             } else if (shareBtn) {
                  const gameId = shareBtn.dataset.gameId;
-                 const shareUrl = `${window.location.origin}${window.location.pathname}?quest=${gameId}`;
-                 copyToClipboard(shareUrl);
+                 copyToClipboard(getQuestShareUrl(gameId));
+            } else if (calendarBtn) {
+                const gameId = calendarBtn.dataset.gameId;
+                const quest = allQuests.find(q => q.id === gameId);
+                if (quest) {
+                    openCalendarModal(quest, gameId);
+                } else {
+                    const gameRef = doc(db, "spielrunden", gameId);
+                    const docSnap = await getDoc(gameRef);
+                    if (docSnap.exists()) openCalendarModal(docSnap.data(), gameId);
+                }
             } else if (joinLeaveBtn) {
                 joinLeaveBtn.disabled = true;
                 await toggleParticipation(joinLeaveBtn.dataset.gameId);
@@ -1173,6 +1311,11 @@
         document.getElementById('close-imprint-modal').addEventListener('click', () => hideModal(imprintModal));
         document.getElementById('close-privacy-modal').addEventListener('click', () => hideModal(privacyModal));
         document.getElementById('close-help-modal').addEventListener('click', () => hideModal(helpModal));
+        document.getElementById('close-calendar-modal').addEventListener('click', () => hideModal(calendarModal));
+        calendarModal.addEventListener('click', (e) => { if (e.target === calendarModal) hideModal(calendarModal); });
+        document.getElementById('calendar-ics-btn').addEventListener('click', () => {
+            if (calendarModalContext) downloadICS(calendarModalContext.game, calendarModalContext.gameId);
+        });
         document.getElementById('imprint-link').addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('imprint-lang-note').classList.toggle('cl-hidden', currentLang !== 'en');
@@ -1753,12 +1896,13 @@
                 ${isCancelled ? `<div class="qb-cancelled-overlay"><span>${t('cancelled')}</span></div>` : ''}
                 <div class="qb-quest-card__body ${isCancelled ? 'qb-dimmed' : ''}">
                     <div class="qb-quest-card__top">
-                        <div class="cl-flex" style="align-items:flex-start; min-width:0; padding-right:4.5rem;">
+                        <div class="cl-flex" style="align-items:flex-start; min-width:0; padding-right:5.75rem;">
                             ${game.bggImageUrl ? `<img src="${game.bggImageUrl}" alt="" class="qb-cover-thumb">` : ''}
                             <h3 class="qb-quest-card__title" style="color:var(--cl-navy-600); padding-right:0;">${escapeHTML(game.gameName)}</h3>
                         </div>
                         <div class="qb-quest-card__actions">
                             <button class="share-quest-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="${t('shareQuest')}" aria-label="${t('shareQuest')}" data-game-id="${gameId}">🔗</button>
+                            <button class="add-to-calendar-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="${t('addToCalendar')}" aria-label="${t('addToCalendar')}" data-game-id="${gameId}">📅</button>
                             ${isCreator ? `
                                 <button class="edit-game-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="${isCancelled ? t('manageQuest') : t('editQuest')}" aria-label="${isCancelled ? t('manageQuest') : t('editQuest')}" data-game-id="${gameId}">✏️</button>
                                 ${!isCancelled ? `<button class="cancel-game-btn qb-icon-btn cl-btn cl-btn--ghost cl-btn--sm" title="${t('cancelQuestBtn')}" aria-label="${t('cancelQuestBtn')}" data-game-id="${gameId}">⨷</button>` : ''}
@@ -1905,6 +2049,9 @@
                 <div class="qb-tags">${participantsHTML}</div>
                 ${isCreator ? `<p class="cl-center" style="margin-top:var(--cl-space-3);"><button id="edit-from-shared-modal-btn" class="cl-btn cl-btn--ghost" data-game-id="${gameId}">${isCancelled ? t('manageQuest') : t('editQuest')}</button></p>` : ''}
                 <button class="join-leave-btn ${joinBtnClass}" style="width:100%; margin-top:var(--cl-space-3);" data-game-id="${gameId}" ${isCancelled || (isFull && !isParticipant) ? 'disabled' : ''}>${isCancelled ? t('joinBtnCancelled') : (isParticipant ? t('leaveQuestBtn') : (isFull ? t('joinBtnFull') : t('joinQuestBtn')))}</button>
+                <button id="shared-add-to-calendar-btn" type="button" class="cl-btn cl-btn--ghost" style="width:100%; margin-top:.5rem;">
+                    <span aria-hidden="true">📅</span> ${t('addToCalendar')}
+                </button>
 
                 <div class="qb-chat-section">
                     <h4>${t('chatTitle')}</h4>
@@ -1925,6 +2072,9 @@
                     descToggleBtn.textContent = descEl.classList.contains('qb-expanded') ? t('readLess') : t('readMore');
                 });
             }
+            document.getElementById('shared-add-to-calendar-btn')?.addEventListener('click', () => {
+                openCalendarModal(game, gameId);
+            });
             listenToQuestChat(gameId);
         }
 
