@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design-Test: Quest-Darstellung · BoardOrbit</title>
+    <link rel="stylesheet" href="https://codelab365.github.io/Spielesammlung-Genduron/codelab365.css">
+    <style>
+        /* ===== Grundgerüst, wie in questboard.html ===== */
+        .qb-header-inner { display: flex; align-items: center; gap: var(--cl-space-3); flex-wrap: wrap; }
+        .qb-icon-sm { width: 1rem; height: 1rem; }
+        .qb-icon-md { width: 1.15rem; height: 1.15rem; }
+
+        /* ===== Umschalter für die drei Varianten ===== */
+        .qb-variant-switch {
+            display: flex; gap: .5rem; flex-wrap: wrap; margin: var(--cl-space-3) 0 var(--cl-space-2);
+            padding: .35rem; background: var(--cl-surface-2); border: 1px solid var(--cl-line);
+            border-radius: var(--cl-radius-pill); width: fit-content;
+        }
+        .qb-variant-btn {
+            padding: .55rem 1.1rem !important; font-size: .9rem !important;
+        }
+        .qb-variant-note {
+            background: var(--cl-surface-2); border: 1px solid var(--cl-line); border-radius: var(--cl-radius-sm);
+            padding: .9rem 1.1rem; font-size: .88rem; color: var(--cl-muted); margin-bottom: var(--cl-space-4);
+        }
+        .qb-variant-note strong { color: var(--cl-text); }
+        .qb-variant-panel { display: none; }
+        .qb-variant-panel.qb-active { display: block; }
+
+        /* Statischer Filter-Kontext (nicht interaktiv, nur zur Einordnung) */
+        .qb-filter-context {
+            display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: var(--cl-space-4);
+            opacity: .7;
+        }
+
+        /* ===== Variante A: Karten (aktueller Stand) ===== */
+        .qb-quest-grid { display: grid; gap: var(--cl-space-3); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        .qb-day-heading { grid-column: 1 / -1; margin-top: var(--cl-space-4); color: var(--cl-muted);
+            font-family: var(--cl-font-display); font-weight: 600; font-size: 1.05rem; }
+        .qb-day-heading:first-child { margin-top: 0; }
+        .qb-quest-card { position: relative; display: flex; flex-direction: column;
+            transition: transform .15s ease, box-shadow .15s ease; }
+        .qb-quest-card:hover { transform: translateY(-2px); box-shadow: var(--cl-shadow-lg); }
+        .qb-quest-card__top { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
+        .qb-quest-card__title { margin: 0; padding-right: 5.75rem; font-size: 1.05rem; color: var(--cl-navy-600); }
+        .qb-quest-card__actions { position: absolute; top: var(--cl-space-3); right: var(--cl-space-3);
+            display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; width: 88px; }
+        .qb-meta-row { display: flex; align-items: center; gap: .5rem; color: var(--cl-muted); font-size: .9rem; margin: .3rem 0; }
+        .qb-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+        .qb-tag { font-size: .75rem; font-weight: 500; padding: .28rem .65rem; border-radius: var(--cl-radius-pill);
+            background: color-mix(in srgb, var(--cl-signal) 16%, var(--cl-surface)); color: var(--cl-navy-600);
+            border: 1px solid color-mix(in srgb, var(--cl-signal) 30%, transparent); }
+        .qb-card-footer { border-top: 1px solid var(--cl-line); padding-top: var(--cl-space-2); margin-top: auto; }
+        .qb-footer-row { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+        .qb-bgg-badge--rating { background: color-mix(in srgb, var(--cl-warn) 20%, transparent); color: var(--cl-warn); font-size:.72rem; font-weight:600; padding:.1rem .5rem; border-radius: var(--cl-radius-pill); }
+        .qb-bgg-badge--weight { background: color-mix(in srgb, var(--cl-signal) 18%, transparent); color: var(--cl-navy-600); font-size:.72rem; font-weight:600; padding:.1rem .5rem; border-radius: var(--cl-radius-pill); }
+        .qb-cover-thumb { width: 52px; height: 52px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
+        .qb-avatar-cover { width:52px; height:52px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+            font-family: var(--cl-font-display); font-weight:700; font-size:1.1rem; color:#fff; flex-shrink:0; }
+        .qb-cancelled-overlay { position: absolute; inset: 0; z-index: 10; border-radius: var(--cl-radius);
+            display: flex; align-items: center; justify-content: center;
+            background: color-mix(in srgb, var(--cl-err) 62%, transparent); }
+        .qb-cancelled-overlay span { font-size: 1.3rem; font-weight: 700; color: #fff; transform: rotate(-8deg);
+            font-family: var(--cl-font-display); }
+        .qb-dimmed { opacity: .45; }
+        .qb-icon-btn { width: 32px; height: 32px; padding:0 !important; }
+
+        /* ===== Variante B: Kompakte Liste ===== */
+        .qb-list-day { display: flex; align-items: center; gap: .6rem; margin: var(--cl-space-3) 0 .5rem; }
+        .qb-list-day:first-child { margin-top: 0; }
+        .qb-list-day__label { font-family: var(--cl-font-display); font-weight: 600; font-size: .82rem;
+            color: var(--cl-muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+        .qb-list-day__line { flex: 1; height: 1px; background: var(--cl-line); }
+        .qb-list { display: flex; flex-direction: column; gap: .5rem; }
+        .qb-list-row {
+            display: flex; align-items: center; gap: .8rem; padding: .6rem .9rem;
+            background: var(--cl-surface); border: 1px solid var(--cl-line); border-radius: var(--cl-radius-sm);
+            box-shadow: var(--cl-shadow); position: relative; transition: transform .12s ease, box-shadow .12s ease;
+        }
+        .qb-list-row:hover { transform: translateX(2px); box-shadow: var(--cl-shadow-lg); }
+        .qb-list-row.qb-list-row--cancelled { opacity: .55; }
+        .qb-list-row__cover { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; object-fit: contain; }
+        .qb-list-row__avatar { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; display: flex;
+            align-items: center; justify-content: center; font-family: var(--cl-font-display); font-weight: 700;
+            color: #fff; font-size: .95rem; }
+        .qb-list-row__main { min-width: 0; flex: 1 1 auto; }
+        .qb-list-row__title-line { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+        .qb-list-row__title { font-weight: 600; color: var(--cl-navy-600); font-size: .95rem; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; }
+        .qb-list-row__meta { display: flex; flex-wrap: wrap; gap: .1rem 1rem; font-size: .82rem; color: var(--cl-muted);
+            margin-top: .15rem; }
+        .qb-list-row__meta span { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+        .qb-list-row__tags { display: none; }
+        .qb-list-row__seats { flex-shrink: 0; font-weight: 600; }
+        .qb-list-row__actions { display: flex; gap: .3rem; flex-shrink: 0; }
+        .qb-list-row__cancelled-tag { font-size: .72rem; font-weight: 700; color: var(--cl-err);
+            border: 1px solid var(--cl-err); border-radius: var(--cl-radius-pill); padding: .1rem .5rem; flex-shrink: 0; }
+        @media (min-width: 860px) {
+            .qb-list-row__tags { display: flex; gap: .3rem; flex-shrink: 0; max-width: 220px; overflow: hidden; }
+            .qb-list-row__tags span { font-size: .68rem; background: var(--cl-surface-2); color: var(--cl-muted);
+                padding: .12rem .5rem; border-radius: var(--cl-radius-pill); white-space: nowrap; }
+        }
+        @media (max-width: 640px) {
+            .qb-list-row { flex-wrap: wrap; }
+            .qb-list-row__seats { order: 3; }
+            .qb-list-row__actions { order: 4; margin-left: auto; }
+        }
+
+        /* ===== Variante C: Tabelle (gestylt) ===== */
+        .qb-table-wrap { background: var(--cl-surface); border: 1px solid var(--cl-line); border-radius: var(--cl-radius);
+            box-shadow: var(--cl-shadow); overflow: hidden; }
+        .qb-table-wrap table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+        .qb-table-wrap thead th {
+            text-align: left; font-family: var(--cl-font-mono); font-size: .72rem; letter-spacing: .05em;
+            text-transform: uppercase; color: var(--cl-muted); font-weight: 700; padding: .8rem 1rem;
+            border-bottom: 1px solid var(--cl-line); background: var(--cl-surface-2);
+        }
+        .qb-table-wrap tbody td { padding: .7rem 1rem; border-bottom: 1px solid var(--cl-line); vertical-align: middle; }
+        .qb-table-wrap tbody tr:last-child td { border-bottom: none; }
+        .qb-table-wrap tbody tr:hover { background: var(--cl-surface-2); }
+        .qb-table-wrap tbody tr.qb-row-cancelled { opacity: .5; }
+        .qb-table-game { display: flex; align-items: center; gap: .7rem; min-width: 220px; }
+        .qb-table-game__cover { width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0; object-fit: contain; }
+        .qb-table-game__avatar { width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0; display: flex;
+            align-items: center; justify-content: center; font-family: var(--cl-font-display); font-weight: 700;
+            color: #fff; font-size: .85rem; }
+        .qb-table-game__name { font-weight: 600; color: var(--cl-navy-600); }
+        .qb-table-game__tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .25rem; }
+        .qb-table-game__tags span { font-size: .68rem; background: var(--cl-surface-2); color: var(--cl-muted);
+            padding: .1rem .45rem; border-radius: var(--cl-radius-pill); }
+        .qb-table-wrap td.qb-table-actions { display: flex; gap: .3rem; justify-content: flex-end; }
+        .qb-table-scroll { overflow-x: auto; }
+        .qb-table-scroll table { min-width: 720px; }
+
+        /* Farben für Platzhalter-Cover (Anfangsbuchstabe) */
+        .qb-c1 { background: #c0392b; } .qb-c2 { background: #8e44ad; } .qb-c3 { background: #16a085; }
+        .qb-c4 { background: #2980b9; } .qb-c5 { background: #d35400; } .qb-c6 { background: #27ae60; }
+        .qb-c7 { background: #7f8c8d; } .qb-c8 { background: #c2185b; }
+    </style>
+</head>
+<body>
+
+    <header class="cl-header">
+        <div class="cl-container qb-header-inner">
+            <a href="#" class="cl-brand"><span style="font-size:1.6rem">🎲</span><span class="cl-brand__name">Board<b>Orbit</b></span></a>
+            <p class="cl-muted" style="margin:0;">Design-Test: Darstellung der Quest-Liste</p>
+        </div>
+    </header>
+
+    <main class="cl-container cl-section">
+        <h1>Wie sollen Quests dargestellt werden?</h1>
+        <p class="cl-lead">Drei Varianten mit denselben Beispiel-Daten (8 Quests, verschiedene Tage, eine abgesagte, eine volle Runde) — zum direkten Vergleichen. Nur diese Seite testet, es ist noch nichts an der echten App geändert.</p>
+
+        <div class="qb-variant-switch" role="group" aria-label="Variante wählen">
+            <button type="button" class="cl-chip qb-variant-btn" data-variant="a" aria-pressed="true">A · Karten (aktuell)</button>
+            <button type="button" class="cl-chip qb-variant-btn" data-variant="b" aria-pressed="false">B · Kompakte Liste</button>
+            <button type="button" class="cl-chip qb-variant-btn" data-variant="c" aria-pressed="false">C · Tabelle</button>
+        </div>
+
+        <div class="qb-variant-note" id="variant-note"></div>
+
+        <div class="qb-filter-context">
+            <input class="cl-input" style="width:auto; min-width:160px;" placeholder="Nach Spiel suchen..." disabled>
+            <input class="cl-input" style="width:auto; min-width:160px;" placeholder="Nach Ort suchen..." disabled>
+            <span class="cl-chip" aria-pressed="true">Alle</span>
+            <span class="cl-chip">Mo</span><span class="cl-chip">Di</span><span class="cl-chip">Mi</span><span class="cl-chip">Do</span><span class="cl-chip">Fr</span>
+        </div>
+
+        <!-- ============ VARIANTE A: KARTEN ============ -->
+        <section class="qb-variant-panel qb-active" id="panel-a">
+            <div id="grid-a" class="qb-quest-grid"></div>
+        </section>
+
+        <!-- ============ VARIANTE B: KOMPAKTE LISTE ============ -->
+        <section class="qb-variant-panel" id="panel-b">
+            <div id="list-b"></div>
+        </section>
+
+        <!-- ============ VARIANTE C: TABELLE ============ -->
+        <section class="qb-variant-panel" id="panel-c">
+            <div class="qb-table-wrap qb-table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Spiel</th>
+                            <th>Ort</th>
+                            <th>Termin</th>
+                            <th>Plätze</th>
+                            <th style="text-align:right;">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body-c"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- Beispiel-Daten (rein statisch, nur für den Design-Vergleich) ---
+        const quests = [
+            { name: 'Catan', location: 'Genduron', day: 'Montag, 14.07.', time: '19:00', duration: 90, seats: [3,4], tags: ['für Anfänger:innen geeignet'], rating: 7.1, weight: 2.3, cover: null, initial: 'C', color: 'qb-c1' },
+            { name: 'Gloomhaven', location: 'Knobelritter', day: 'Montag, 14.07.', time: '18:00', duration: 240, seats: [2,4], tags: ['Expertenspiel'], rating: 8.6, weight: 3.9, cover: null, initial: 'G', color: 'qb-c2' },
+            { name: 'Wingspan', location: 'Spieleversum', day: 'Dienstag, 15.07.', time: '17:30', duration: 60, seats: [4,5], tags: ['für Anfänger:innen geeignet'], rating: 7.9, weight: 2.4, cover: null, initial: 'W', color: 'qb-c3' },
+            { name: 'Pandemic', location: 'Genduron', day: 'Dienstag, 15.07.', time: '19:30', duration: 45, seats: [2,4], tags: ['Kooperativ', 'Regeln werden erklärt!'], rating: null, weight: null, cover: null, initial: 'P', color: 'qb-c4' },
+            { name: 'Terraforming Mars', location: 'Games Toys and more', day: 'Mittwoch, 16.07.', time: '18:00', duration: 120, seats: [3,5], tags: ['Expertenspiel'], rating: 8.4, weight: 3.2, cover: null, initial: 'T', color: 'qb-c5', cancelled: true },
+            { name: 'Codenames', location: 'Brettspielfreunde', day: 'Mittwoch, 16.07.', time: '20:00', duration: 30, seats: [6,8], tags: ['für Anfänger:innen geeignet'], rating: null, weight: null, cover: null, initial: 'C', color: 'qb-c6' },
+            { name: 'Azul', location: 'Genduron', day: 'Donnerstag, 17.07.', time: '19:00', duration: 45, seats: [4,4], tags: ['für Anfänger:innen geeignet'], rating: 7.8, weight: 1.8, cover: null, initial: 'A', color: 'qb-c7' },
+            { name: 'Root', location: 'Knobelritter', day: 'Freitag, 18.07.', time: '18:30', duration: 150, seats: [1,4], tags: ['Expertenspiel', 'Regeln werden erklärt!'], rating: 8.1, weight: 3.9, cover: null, initial: 'R', color: 'qb-c8' }
+        ];
+
+        const notes = {
+            a: '<strong>A · Karten (aktueller Stand):</strong> Am meisten Platz pro Quest, dafür visuell am reichhaltigsten (großes Cover, alle Tags sichtbar, große Klickfläche). Bei vielen Terminen an einem Tag scrollt man aber deutlich länger, und jede Tagesüberschrift kostet eine volle Zeile.',
+            b: '<strong>B · Kompakte Liste:</strong> Ein Termin = eine Zeile (~56px statt ~220px). Cover, Ort, Zeit, Plätze und Aktionen bleiben sichtbar; Tags werden ab Tablet-Breite als kleine Chips rechts eingeblendet, auf dem Handy ausgeblendet um Platz zu sparen. Die Tagesgruppierung ist nur noch eine schmale Trennlinie statt einer vollen Überschrift. Deutlich mehr Termine passen auf einen Blick.',
+            c: '<strong>C · Tabelle (gestylt):</strong> Am dichtesten, gut zum schnellen Scannen vieler Termine — aber mit den Karten-typischen Elementen (Cover, farbige Badges, Tags, Hover-Effekt) statt einer nackten Excel-Optik. Die Tagesangabe steckt in der Termin-Spalte statt in eigenen Überschriften. Auf sehr schmalen Screens muss die Tabelle horizontal gescrollt werden — das ist der Haupt-Nachteil gegenüber B.'
+        };
+
+        function seatsHTML(seats) {
+            const [have, total] = seats;
+            const full = have >= total;
+            return `<span class="cl-badge ${full ? 'cl-badge--err' : 'cl-badge--ok'}">${have}/${total}</span>`;
+        }
+
+        function coverBlock(q, sizeClass, avatarClass) {
+            return `<div class="${avatarClass} ${q.color}">${q.initial}</div>`;
+        }
+
+        function bggBadges(q) {
+            if (q.rating == null && q.weight == null) return '';
+            const r = q.rating != null ? `<span class="qb-bgg-badge--rating">⭐ ${q.rating.toFixed(1)}</span>` : '';
+            const w = q.weight != null ? `<span class="qb-bgg-badge--weight">⚙️ ${q.weight.toFixed(1)}</span>` : '';
+            return r + w;
+        }
+
+        // ---- Variante A: Karten, gruppiert nach Tag ----
+        function renderCards() {
+            const grid = document.getElementById('grid-a');
+            let html = '';
+            let lastDay = null;
+            quests.forEach(q => {
+                if (q.day !== lastDay) {
+                    html += `<h3 class="qb-day-heading">${q.day}</h3>`;
+                    lastDay = q.day;
+                }
+                html += `
+                    <div class="cl-card cl-card--pad qb-quest-card">
+                        ${q.cancelled ? '<div class="qb-cancelled-overlay"><span>ABGESAGT</span></div>' : ''}
+                        <div class="${q.cancelled ? 'qb-dimmed' : ''}">
+                            <div class="qb-quest-card__top">
+                                <div class="cl-flex" style="align-items:flex-start; min-width:0; padding-right:5.75rem;">
+                                    ${coverBlock(q, '', 'qb-avatar-cover')}
+                                    <h3 class="qb-quest-card__title">${q.name}</h3>
+                                </div>
+                                <div class="qb-quest-card__actions">
+                                    <button class="cl-btn cl-btn--ghost qb-icon-btn" title="Teilen">🔗</button>
+                                    <button class="cl-btn cl-btn--ghost qb-icon-btn" title="Kalender">📅</button>
+                                </div>
+                            </div>
+                            <div class="qb-meta-row">
+                                <svg class="qb-icon-sm" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                                <span>${q.location}</span>
+                            </div>
+                            <div class="qb-meta-row" style="color:var(--cl-text);">
+                                <svg class="qb-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
+                                <span>${q.time} Uhr (ca. ${q.duration} Min.)</span>
+                            </div>
+                            ${bggBadges(q) ? `<div class="qb-tags" style="margin-top:.3rem;">${bggBadges(q)}</div>` : ''}
+                            <div class="qb-tags">${q.tags.map(tag => `<span class="qb-tag">${tag}</span>`).join('')}</div>
+                        </div>
+                        <div class="qb-card-footer ${q.cancelled ? 'qb-dimmed' : ''}">
+                            <div class="qb-footer-row">
+                                ${seatsHTML(q.seats)}
+                                <button class="cl-btn cl-btn--sm cl-btn--signal">Dabei!</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+        }
+
+        // ---- Variante B: Kompakte Liste ----
+        function renderList() {
+            const container = document.getElementById('list-b');
+            let html = '';
+            let lastDay = null;
+            let openList = false;
+            quests.forEach(q => {
+                if (q.day !== lastDay) {
+                    if (openList) html += '</div>';
+                    html += `<div class="qb-list-day"><span class="qb-list-day__label">${q.day}</span><span class="qb-list-day__line"></span></div><div class="qb-list">`;
+                    lastDay = q.day;
+                    openList = true;
+                }
+                html += `
+                    <div class="qb-list-row ${q.cancelled ? 'qb-list-row--cancelled' : ''}">
+                        ${coverBlock(q, '', 'qb-list-row__avatar')}
+                        <div class="qb-list-row__main">
+                            <div class="qb-list-row__title-line">
+                                <span class="qb-list-row__title">${q.name}</span>
+                                ${q.cancelled ? '<span class="qb-list-row__cancelled-tag">ABGESAGT</span>' : ''}
+                            </div>
+                            <div class="qb-list-row__meta">
+                                <span>📍 ${q.location}</span>
+                                <span>🕒 ${q.time} · ${q.duration} Min.</span>
+                                ${q.rating != null ? `<span>⭐ ${q.rating.toFixed(1)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="qb-list-row__tags">${q.tags.map(tag => `<span>${tag}</span>`).join('')}</div>
+                        <div class="qb-list-row__seats">${seatsHTML(q.seats)}</div>
+                        <div class="qb-list-row__actions">
+                            <button class="cl-btn cl-btn--ghost qb-icon-btn" title="Teilen">🔗</button>
+                            <button class="cl-btn cl-btn--ghost qb-icon-btn" title="Kalender">📅</button>
+                            <button class="cl-btn cl-btn--signal cl-btn--sm">Dabei!</button>
+                        </div>
+                    </div>
+                `;
+            });
+            if (openList) html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ---- Variante C: Tabelle ----
+        function renderTable() {
+            const tbody = document.getElementById('table-body-c');
+            tbody.innerHTML = quests.map(q => `
+                <tr class="${q.cancelled ? 'qb-row-cancelled' : ''}">
+                    <td>
+                        <div class="qb-table-game">
+                            ${coverBlock(q, '', 'qb-table-game__avatar')}
+                            <div>
+                                <div class="qb-table-game__name">${q.name}${q.cancelled ? ' <span style="color:var(--cl-err); font-size:.7rem; font-weight:700;">· ABGESAGT</span>' : ''}</div>
+                                <div class="qb-table-game__tags">
+                                    ${q.tags.map(tag => `<span>${tag}</span>`).join('')}
+                                    ${q.rating != null ? `<span>⭐ ${q.rating.toFixed(1)}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${q.location}</td>
+                    <td>${q.day.split(',')[0]}<br><span class="cl-muted" style="font-size:.82rem;">${q.day.split(', ')[1]}, ${q.time} Uhr</span></td>
+                    <td>${seatsHTML(q.seats)}</td>
+                    <td class="qb-table-actions">
+                        <button class="cl-btn cl-btn--ghost qb-icon-btn" title="Teilen">🔗</button>
+                        <button class="cl-btn cl-btn--ghost qb-icon-btn" title="Kalender">📅</button>
+                        <button class="cl-btn cl-btn--signal cl-btn--sm">Dabei!</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function setVariant(v) {
+            document.querySelectorAll('.qb-variant-panel').forEach(p => p.classList.remove('qb-active'));
+            document.getElementById('panel-' + v).classList.add('qb-active');
+            document.querySelectorAll('.qb-variant-btn').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.variant === v ? 'true' : 'false'));
+            document.getElementById('variant-note').innerHTML = notes[v];
+        }
+
+        document.querySelectorAll('.qb-variant-btn').forEach(btn => {
+            btn.addEventListener('click', () => setVariant(btn.dataset.variant));
+        });
+
+        renderCards();
+        renderList();
+        renderTable();
+        setVariant('a');
+    </script>
+</body>
+</html>
