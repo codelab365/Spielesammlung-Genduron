@@ -3,114 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAQ - Questboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>FAQ · Questboard</title>
+    <link rel="stylesheet" href="https://codelab365.github.io/Spielesammlung-Genduron/codelab365.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        /* =========================================================
+           qb- : Seiten-spezifische Ergänzungen zum codeLAB365
+           Design-System, konsistent mit questboard.html.
+           ========================================================= */
+        .qb-header-actions { display: flex; align-items: center; gap: var(--cl-space-2); }
+        .qb-lang-toggle { display: flex; gap: .25rem; padding: .2rem; background: var(--cl-surface-2);
+            border: 1px solid var(--cl-line); border-radius: var(--cl-radius-pill); }
+        .qb-lang-btn { padding: .3rem .6rem !important; font-size: .78rem !important; }
+        .qb-header-inner { display: flex; align-items: center; gap: var(--cl-space-3); flex-wrap: wrap; }
+        .qb-header-spacer { margin-left: auto; }
+
+        .qb-toc { display: flex; flex-wrap: wrap; gap: .5rem; margin: var(--cl-space-3) 0 var(--cl-space-5); }
+        .qb-toc a { font-size: .85rem; }
+
+        .qb-steps { counter-reset: qb-step; display: flex; flex-direction: column; gap: var(--cl-space-3); }
+        .qb-step { display: flex; gap: var(--cl-space-3); align-items: flex-start; }
+        .qb-step__num {
+            counter-increment: qb-step; flex-shrink: 0; width: 2.4rem; height: 2.4rem; border-radius: 50%;
+            background: var(--cl-primary); color: var(--cl-on-primary); display: flex; align-items: center;
+            justify-content: center; font-family: var(--cl-font-display); font-weight: 700; font-size: 1.1rem;
+        }
+        .qb-step__num::before { content: counter(qb-step); }
+        .qb-step__body h3 { margin-bottom: .3rem; font-size: 1.05rem; }
+        .qb-step__body p { margin-bottom: 0; color: var(--cl-muted); }
+
+        .qb-faq-section { margin-top: var(--cl-space-5); }
+        .qb-faq-section h2 { display: flex; align-items: center; gap: .5rem; padding-bottom: .5rem;
+            border-bottom: 1px solid var(--cl-line); }
+        .qb-faq-list { display: flex; flex-direction: column; gap: .7rem; margin-top: var(--cl-space-3); }
+
+        details.qb-faq-item {
+            background: var(--cl-surface); border: 1px solid var(--cl-line); border-radius: var(--cl-radius);
+            box-shadow: var(--cl-shadow); overflow: hidden;
+        }
+        details.qb-faq-item summary {
+            cursor: pointer; list-style: none; padding: 1rem 1.25rem; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+        }
+        details.qb-faq-item summary::-webkit-details-marker { display: none; }
+        details.qb-faq-item summary::after {
+            content: '+'; font-size: 1.4rem; font-weight: 400; color: var(--cl-muted); flex-shrink: 0;
+            transition: transform .15s ease;
+        }
+        details.qb-faq-item[open] summary::after { transform: rotate(45deg); }
+        details.qb-faq-item summary:hover { color: var(--cl-primary-hover); }
+        .qb-faq-item__body { padding: 0 1.25rem 1.1rem; color: var(--cl-muted); font-size: .95rem; }
+        .qb-faq-item__body p { margin-bottom: .7rem; }
+        .qb-faq-item__body p:last-child { margin-bottom: 0; }
+        .qb-faq-item__body ul { margin: 0 0 .7rem 1.1rem; padding: 0; }
+        .qb-faq-item__body li { margin-bottom: .4rem; }
+        .qb-faq-item__body strong { color: var(--cl-text); }
+
+        .qb-note {
+            background: var(--cl-surface-2); border: 1px solid var(--cl-line); border-radius: var(--cl-radius-sm);
+            padding: .8rem 1rem; font-size: .88rem; color: var(--cl-muted); margin-top: var(--cl-space-2);
+        }
+
+        @media (max-width: 480px) {
+            .qb-tagline { display: none; }
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-white antialiased">
+<body>
 
-    <!-- Header -->
-    <header class="bg-slate-800/70 backdrop-blur-sm sticky top-0 z-20 shadow-lg">
-        <div class="container mx-auto px-4 py-4 max-w-5xl flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-cyan-400">🎲 Questboard</h1>
-                <p class="text-slate-400 mt-1">Häufig gestellte Fragen (FAQ)</p>
-            </div>
-             <a href="https://gegensystem.github.io/Spielesammlung-Genduron/questboard.html" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                Zurück zum Board
+    <header class="cl-header">
+        <div class="cl-container qb-header-inner">
+            <a href="https://codelab365.github.io/Spielesammlung-Genduron/questboard.html" class="cl-brand">
+                <span style="font-size:1.6rem">🎲</span><span class="cl-brand__name">Board<b>Orbit</b></span>
             </a>
+            <p class="cl-muted qb-tagline" data-i18n="headerSubtitle" style="margin:0;">Häufig gestellte Fragen (FAQ)</p>
+            <div class="qb-header-spacer"></div>
+            <div class="qb-header-actions">
+                <div class="qb-lang-toggle" role="group" aria-label="Sprache / Language">
+                    <button type="button" class="cl-chip qb-lang-btn" data-lang="de" aria-pressed="true">DE</button>
+                    <button type="button" class="cl-chip qb-lang-btn" data-lang="en" aria-pressed="false">EN</button>
+                </div>
+                <a href="https://codelab365.github.io/Spielesammlung-Genduron/questboard.html" class="cl-btn cl-btn--signal" data-i18n="backToBoard">Zurück zum Board</a>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="container mx-auto p-4 max-w-5xl mt-8">
-        <div class="space-y-8">
+    <main class="cl-container cl-section">
+        <h1 data-i18n="pageHeading">Häufig gestellte Fragen</h1>
+        <p class="cl-lead" data-i18n="pageIntro">Alles, was du über die Nutzung von Questboard wissen musst — von der Registrierung bis zum Eintrag im eigenen Kalender.</p>
 
-            <!-- Section: Allgemein -->
-            <h2 class="text-2xl font-bold text-cyan-400 border-b border-slate-700 pb-2">Allgemein</h2>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Was ist das Questboard?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Das Questboard ist eine Plattform, die es dir einfach macht, Mitspieler für Brettspiele und andere Tabletop-Spiele in deiner Umgebung zu finden. Du kannst entweder an von anderen erstellten Runden (Quests) teilnehmen oder selbst welche anbieten.
-                </p>
-            </div>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Ist die Nutzung kostenlos?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Ja, die Nutzung des Questboards ist komplett kostenlos. Wenn dir die Seite gefällt, kannst du dem Betreiber über den "Kaffee ausgeben"-Button eine kleine freiwillige Zuwendung zukommen lassen.
-                </p>
-            </div>
+        <nav class="qb-toc" id="toc" aria-label="Inhaltsverzeichnis"></nav>
 
-            <!-- Section: Konto -->
-            <h2 class="text-2xl font-bold text-cyan-400 border-b border-slate-700 pb-2 mt-12">Konto & Registrierung</h2>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Muss ich mich registrieren?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Du kannst alle öffentlichen Quests ansehen, ohne registriert zu sein. Um jedoch selbst ein Quest zu erstellen oder an einem teilzunehmen, benötigst du ein kostenloses Konto mit einer bestätigten E-Mail-Adresse.
-                </p>
-            </div>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Ich habe mich registriert, aber keine E-Mail erhalten. Was nun?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Bitte überprüfe unbedingt deinen **Spam- oder Junk-Ordner** in deinem E-Mail-Postfach. Leider landen automatisch versendete E-Mails oft fälschlicherweise dort. Der Link in der E-Mail ist notwendig, um dein Konto zu bestätigen, bevor du Quests erstellen oder ihnen beitreten kannst.
-                </p>
-            </div>
-            
-            <!-- Section: Quests finden -->
-            <h2 class="text-2xl font-bold text-cyan-400 border-b border-slate-700 pb-2 mt-12">Quests finden & teilnehmen</h2>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Wie finde ich passende Quests?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Dir stehen mehrere Filter zur Verfügung, die du auch kombinieren kannst:
-                </p>
-                <ul class="list-disc list-inside text-slate-300 mt-4 space-y-2">
-                    <li><strong>Textsuche:</strong> Gib einfach den Namen eines Spiels oder einen Ort in die Suchfelder ein.</li>
-                    <li><strong>Orts-Buttons:</strong> Wähle einen oder mehrere der vorgegebenen Spielorte aus, um nur Quests dort zu sehen.</li>
-                    <li><strong>Wochentage:</strong> Klicke auf einen oder mehrere Wochentage (Mo, Di, etc.), um deine Suche auf diese Tage zu beschränken.</li>
-                    <li><strong>Datumssuche:</strong> Klicke auf das Datumsfeld, um einen Kalender zu öffnen und gezielt nach Quests an einem bestimmten Tag zu suchen.</li>
-                </ul>
-            </div>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Wie kann ich ein Quest mit Freunden teilen?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Auf jeder Quest-Karte findest du oben rechts ein kleines Link-Symbol (🔗). Klicke darauf, und ein direkter Link zu diesem Quest wird in deine Zwischenablage kopiert. Diesen Link kannst du dann einfach an deine Freunde senden.
-                </p>
-            </div>
+        <section id="steps-section">
+            <h2 data-i18n="stepsHeading">Schritt für Schritt: Die wichtigsten Funktionen</h2>
+            <p class="cl-muted" data-i18n="stepsIntro" style="margin-bottom:var(--cl-space-3);">So findest oder organisierst du in wenigen Minuten deine erste Spielrunde.</p>
+            <ol class="qb-steps" id="steps-list" style="list-style:none; padding:0; margin:0;"></ol>
+        </section>
 
-            <!-- Section: Eigene Quests -->
-            <h2 class="text-2xl font-bold text-cyan-400 border-b border-slate-700 pb-2 mt-12">Eigene Quests verwalten</h2>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Was ist der Unterschied zwischen "Absagen" und "Löschen"?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Als Ersteller eines Quests hast du zwei Möglichkeiten, es zu verwalten:
-                </p>
-                 <ul class="list-disc list-inside text-slate-300 mt-4 space-y-2">
-                    <li><strong>Absagen (⨷ Symbol):</strong> Das Quest wird für andere als "ABGESAGT" markiert und niemand kann mehr beitreten. Du kannst es aber jederzeit über den Bearbeiten-Button (✏️) wieder **reaktivieren**.</li>
-                    <li><strong>Löschen:</strong> Im Bearbeitungsfenster findest du einen "Löschen"-Button. Diese Aktion entfernt das Quest **endgültig und unwiderruflich** aus der Datenbank.</li>
-                </ul>
-            </div>
-            <div class="bg-slate-800 p-6 rounded-lg">
-                <h3 class="text-xl font-bold text-slate-200 mb-3">Muss ich die Öffnungszeiten der Spielorte beachten?</h3>
-                <p class="text-slate-300 leading-relaxed">
-                    Ja. Die App überprüft die Öffnungszeiten der bekannten Spielorte nicht mehr automatisch. Bitte informiere dich eigenständig über die Öffnungszeiten, besonders wenn du ein Quest außerhalb der üblichen Stoßzeiten planst.
-                </p>
-            </div>
-
-        </div>
+        <div id="faq-sections"></div>
     </main>
-    
-    <!-- Footer -->
-    <footer class="text-center py-8 mt-8 text-slate-500 border-t border-slate-800">
-        <div class="container mx-auto px-4 max-w-5xl">
-             © 2024 Questboard
+
+    <footer class="cl-footer">
+        <div class="cl-container cl-center">
+            <a href="https://codelab365.github.io/Spielesammlung-Genduron/questboard.html" data-i18n="backToBoard">Zurück zum Board</a>
         </div>
     </footer>
 
+    <script>
+        // --- i18n: geteilte Spracheinstellung mit questboard.html (gleicher localStorage-Key) ---
+        let currentLang = localStorage.getItem('qb_lang') || 'de';
+        if (currentLang !== 'de' && currentLang !== 'en') currentLang = 'de';
+
+        function t(key) {
+            return (ui[currentLang] && ui[currentLang][key]) ?? ui.de[key] ?? key;
+        }
+
+        const ui = {
+            de: {
+                headerSubtitle: 'Häufig gestellte Fragen (FAQ)',
+                backToBoard: 'Zurück zum Board',
+                pageHeading: 'Häufig gestellte Fragen',
+                pageIntro: 'Alles, was du über die Nutzung von Questboard wissen musst — von der Registrierung bis zum Eintrag im eigenen Kalender.',
+                stepsHeading: 'Schritt für Schritt: Die wichtigsten Funktionen',
+                stepsIntro: 'So findest oder organisierst du in wenigen Minuten deine erste Spielrunde.'
+            },
+            en: {
+                headerSubtitle: 'Frequently Asked Questions (FAQ)',
+                backToBoard: 'Back to the board',
+                pageHeading: 'Frequently Asked Questions',
+                pageIntro: 'Everything you need to know about using Questboard — from registration to adding a session to your own calendar.',
+                stepsHeading: 'Step by step: the most important features',
+                stepsIntro: 'Here\'s how to find or organize your first game session in just a few minutes.'
+            }
+        };
+
+        // --- Schritt-für-Schritt-Anleitung ---
+        const steps = {
+            de: [
+                { title: 'Konto erstellen & E-Mail bestätigen', body: 'Öffne über das Menü "Login / Registrieren", leg ein kostenloses Konto an und bestätige den Link, den du per E-Mail bekommst (schau notfalls in den Spam-Ordner). Stöbern kannst du auch ohne Konto — erstellen oder beitreten geht aber nur eingeloggt.' },
+                { title: 'Passendes Quest finden — oder selbst eines anbieten', body: 'Nutze die Filter (Spielname, Ort, Wochentag, Datum) um eine passende Runde zu finden. Willst du selbst organisieren: "Neues Quest anbieten" klicken, Spiel, Ort, Zeit und Plätze eintragen. Über den "🎲 BGG"-Button kannst du das Spiel optional mit BoardGameGeek verknüpfen — dann werden Cover, Bewertung und Komplexität automatisch angezeigt.' },
+                { title: 'Beitreten oder Teilnahme verwalten', body: 'Auf der Quest-Karte zeigt "Dabei!" freie Plätze an. Ein Klick trägt dich ein, "Verlassen" meldet dich wieder ab. Ist die Runde voll, ist der Button deaktiviert.' },
+                { title: 'Termin in den eigenen Kalender eintragen', body: 'Über das 📅-Symbol auf der Karte oder im Detail-Fenster fügst du den Termin direkt in Google Kalender ein oder lädst eine universelle .ics-Datei herunter (Apple Kalender, Outlook, …). Das funktioniert für jede:n — auch ohne Login und unabhängig von der Teilnahme.' },
+                { title: 'Sich im Quest-Chat abstimmen', body: 'Öffne eine Quest-Karte für die Detailansicht — dort gibt es einen Chat, in dem sich eingeloggte Nutzer:innen zur Runde austauschen können (z. B. wer noch was mitbringt).' },
+                { title: 'Eigene Quests verwalten', body: 'Als Ersteller:in kannst du über das ✏️-Symbol dein Quest bearbeiten, absagen, reaktivieren oder endgültig löschen.' }
+            ],
+            en: [
+                { title: 'Create an account & confirm your email', body: 'Open "Log in / Register" from the menu, create a free account and confirm the link sent to your email (check your spam folder if needed). You can browse without an account — but creating or joining requires being logged in.' },
+                { title: 'Find a matching quest — or host your own', body: 'Use the filters (game name, location, weekday, date) to find a session that fits. Want to organize your own? Click "Offer a new quest" and fill in game, location, time and seats. The "🎲 BGG" button lets you optionally link the game to BoardGameGeek — the cover, rating and complexity will then show automatically.' },
+                { title: 'Join or manage your participation', body: 'On a quest card, "Join!" shows free seats. Click it to join; "Leave" removes you again. Once a session is full, the button is disabled.' },
+                { title: 'Add the date to your own calendar', body: 'The 📅 icon on the card or in the detail view lets you add the event directly to Google Calendar, or download a universal .ics file (Apple Calendar, Outlook, …). This works for anyone — no login required, regardless of whether you\'re participating.' },
+                { title: 'Coordinate in the quest chat', body: 'Open a quest card for the detail view — there\'s a chat there where logged-in users can coordinate about the session (e.g. who\'s bringing what).' },
+                { title: 'Manage your own quests', body: 'As the organizer, use the ✏️ icon to edit, cancel, reactivate, or permanently delete your quest.' }
+            ]
+        };
+
+        // --- FAQ-Inhalte ---
+        const faq = {
+            de: [
+                {
+                    id: 'allgemein', heading: '🎲 Allgemein', items: [
+                        { q: 'Was ist Questboard?', a: '<p>Questboard (auch "BoardOrbit" genannt) ist eine kostenlose Plattform, die es einfach macht, Mitspieler:innen für Brett- und Kartenspiele in deiner Umgebung zu finden. Du kannst an von anderen erstellten Runden ("Quests") teilnehmen oder selbst welche anbieten.</p>' },
+                        { q: 'Ist die Nutzung kostenlos?', a: '<p>Ja, komplett. Wenn dir das Projekt gefällt, kannst du dem Betreiber über den "☕ Kaffee ausgeben"-Button eine freiwillige Zuwendung zukommen lassen — notwendig ist das nicht.</p>' },
+                        { q: 'Kann ich die Sprache umstellen?', a: '<p>Ja. Oben im Header und im Seitenmenü findest du einen DE/EN-Umschalter. Die gesamte Oberfläche (Formulare, Buttons, Meldungen) wird übersetzt, deine Wahl wird gespeichert und gilt auch auf dieser FAQ-Seite. Ausnahme: Impressum und Datenschutzerklärung bleiben aus rechtlichen Gründen nur auf Deutsch verfügbar, da die deutsche Fassung maßgeblich ist.</p>' }
+                    ]
+                },
+                {
+                    id: 'konto', heading: '👤 Konto & Registrierung', items: [
+                        { q: 'Muss ich mich registrieren?', a: '<p>Zum Ansehen aller öffentlichen Quests brauchst du kein Konto. Um selbst ein Quest zu erstellen, einer Runde beizutreten oder im Quest-Chat mitzuschreiben, benötigst du ein kostenloses Konto.</p>' },
+                        { q: 'Ich habe mich registriert, aber keine E-Mail erhalten. Was nun?', a: '<p>Bitte prüfe zuerst deinen <strong>Spam- oder Junk-Ordner</strong> — automatisch versendete E-Mails landen dort leider öfter mal fälschlicherweise. Solange dein Konto nicht bestätigt ist, zeigt dir die Seite oben ein Hinweis-Banner mit einem "Erneut senden"-Button.</p>' },
+                        { q: 'Wie kann ich mein Konto löschen?', a: '<p>Öffne im Seitenmenü "Mein Konto" und klicke unten auf "Löschung anfragen". Es wird eine Anfrage mit deinen Kontodaten an den Administrator gesendet, der die Löschung manuell durchführt.</p>' }
+                    ]
+                },
+                {
+                    id: 'finden', heading: '🔍 Quests finden & teilen', items: [
+                        { q: 'Wie finde ich passende Quests?', a: '<p>Dir stehen mehrere, kombinierbare Filter zur Verfügung:</p><ul><li><strong>Textsuche:</strong> Spielname oder Ort direkt eintippen.</li><li><strong>Orts-Buttons:</strong> Einen oder mehrere vorgegebene Spielorte auswählen.</li><li><strong>Wochentage:</strong> Auf einen oder mehrere Wochentage (Mo, Di, …) klicken.</li><li><strong>Datumssuche:</strong> Über das Datumsfeld gezielt nach einem bestimmten Tag suchen.</li></ul>' },
+                        { q: 'Wie teile ich ein Quest mit Freunden?', a: '<p>Auf jeder Quest-Karte findest du oben rechts ein Link-Symbol (🔗). Ein Klick kopiert einen direkten Link zu genau diesem Quest in deine Zwischenablage — den kannst du z. B. in eine Chatgruppe einfügen.</p>' },
+                        { q: 'Wie trage ich den Termin in meinen eigenen Kalender ein?', a: '<p>Über das 📅-Symbol auf der Karte oder im Detail-Fenster öffnet sich eine Auswahl: entweder direkt in <strong>Google Kalender</strong> einfügen, oder eine universelle <strong>.ics-Datei</strong> herunterladen, die von Apple Kalender, Outlook, Thunderbird & Co. erkannt wird. Als Beschreibung wird automatisch der Link zur Quest eingetragen.</p><p>Das funktioniert unabhängig davon, ob du eingeloggt bist oder an der Runde teilnimmst — jede:r kann sich den Termin eintragen.</p>' },
+                        { q: 'Muss ich die Öffnungszeiten der Spielorte beachten?', a: '<p>Ja. Die App prüft Öffnungszeiten nicht automatisch. Bitte informiere dich eigenständig, besonders bei Terminen außerhalb der üblichen Zeiten.</p>' }
+                    ]
+                },
+                {
+                    id: 'erstellen', heading: '➕ Quest erstellen & BGG-Verknüpfung', items: [
+                        { q: 'Wie erstelle ich ein Quest?', a: '<p>Klick auf "Neues Quest anbieten" und trag Spielname, Ort, Datum, Uhrzeit und Anzahl der Plätze ein. Optional kannst du eine Dauer und Tags (z. B. "Kooperativ", "für Anfänger:innen geeignet") hinzufügen.</p>' },
+                        { q: 'Was macht der "🎲 BGG"-Button?', a: '<p>Er sucht das eingetippte Spiel auf BoardGameGeek (der größten Spiele-Datenbank im Netz). Wählst du ein Ergebnis aus, siehst du direkt eine Vorschau mit Cover, Bewertung und Komplexitäts-Einstufung. Bestätigst du die Auswahl, werden diese Infos auf der Quest-Karte und im Detail-Fenster mit angezeigt.</p>' },
+                        { q: 'Warum ist die BGG-Beschreibung auf Englisch?', a: '<p>BoardGameGeek liefert Beschreibungstexte fast ausschließlich auf Englisch — dafür gibt es leider keine offizielle deutsche Version über die Schnittstelle. Alternativtitel werden angezeigt, sofern auf BGG hinterlegt, aber ohne Sprachgarantie.</p>' },
+                        { q: 'Kann ich ein Quest auch ohne BGG-Verknüpfung anlegen?', a: '<p>Ja, jederzeit. Der Spielname bleibt reiner Freitext — die BGG-Verknüpfung ist eine rein optionale Ergänzung und lässt sich beim Bearbeiten auch wieder entfernen.</p>' }
+                    ]
+                },
+                {
+                    id: 'chat', heading: '💬 Quest-Chat', items: [
+                        { q: 'Was ist der Quest-Chat?', a: '<p>Jede Quest hat in der Detail-Ansicht einen eigenen, kleinen Chat, in dem sich Teilnehmende und Interessierte live austauschen können — z. B. um sich abzustimmen, wer was mitbringt, oder um kurzfristige Änderungen zu besprechen.</p>' },
+                        { q: 'Wer kann den Chat sehen und schreiben?', a: '<p>Sehen kann den Chatverlauf, wer die Detail-Ansicht der Quest öffnet. Mitschreiben können ausschließlich eingeloggte Nutzer:innen — bist du nicht eingeloggt, siehst du stattdessen einen Hinweis mit Login-Link.</p>' }
+                    ]
+                },
+                {
+                    id: 'verwalten', heading: '⚙️ Eigene Quests verwalten', items: [
+                        { q: 'Was ist der Unterschied zwischen "Absagen" und "Löschen"?', a: '<p>Als Ersteller:in eines Quests hast du zwei Möglichkeiten:</p><ul><li><strong>Absagen (⨷-Symbol):</strong> Das Quest wird für andere als "ABGESAGT" markiert, niemand kann mehr beitreten. Über den Bearbeiten-Button (✏️) kannst du es jederzeit wieder <strong>reaktivieren</strong>.</li><li><strong>Löschen:</strong> Im Bearbeitungsfenster gibt es einen "Löschen"-Button. Das entfernt das Quest <strong>endgültig und unwiderruflich</strong> aus der Datenbank — inklusive Chatverlauf.</li></ul>' },
+                        { q: 'Kann ich einzelne Teilnehmer:innen entfernen?', a: '<p>Ja. Öffne die Detail-Ansicht deiner Quest — neben jedem Namen in der Teilnehmerliste findest du als Ersteller:in ein kleines × zum Entfernen.</p>' }
+                    ]
+                }
+            ],
+            en: [
+                {
+                    id: 'allgemein', heading: '🎲 General', items: [
+                        { q: 'What is Questboard?', a: '<p>Questboard (also called "BoardOrbit") is a free platform that makes it easy to find fellow players for board and card games near you. You can join sessions ("quests") created by others, or host your own.</p>' },
+                        { q: 'Is it free to use?', a: '<p>Yes, completely. If you enjoy the project, you can leave the operator a voluntary tip via the "☕ Buy a coffee" button — but it\'s never required.</p>' },
+                        { q: 'Can I change the language?', a: '<p>Yes. You\'ll find a DE/EN switch in the header and in the side menu. The entire interface (forms, buttons, messages) gets translated, and your choice is saved and also applies to this FAQ page. Exception: the imprint and privacy policy remain German-only for legal reasons, since the German version is the legally binding one.</p>' }
+                    ]
+                },
+                {
+                    id: 'konto', heading: '👤 Account & Registration', items: [
+                        { q: 'Do I need to register?', a: '<p>You can browse all public quests without an account. To create a quest, join a session, or write in a quest chat, you need a free account.</p>' },
+                        { q: "I registered but didn't get an email. What now?", a: "<p>First check your <strong>spam or junk folder</strong> — automated emails unfortunately end up there sometimes. As long as your account isn't confirmed, you'll see a banner at the top with a \"Resend\" button.</p>" },
+                        { q: 'How do I delete my account?', a: '<p>Open "My Account" from the side menu and click "Request deletion" at the bottom. This sends a request with your account data to the administrator, who carries out the deletion manually.</p>' }
+                    ]
+                },
+                {
+                    id: 'finden', heading: '🔍 Finding & sharing quests', items: [
+                        { q: 'How do I find matching quests?', a: '<p>Several combinable filters are available:</p><ul><li><strong>Text search:</strong> Type a game name or location directly.</li><li><strong>Location buttons:</strong> Select one or more predefined locations.</li><li><strong>Weekdays:</strong> Click one or more weekdays (Mon, Tue, …).</li><li><strong>Date search:</strong> Use the date field to search for a specific day.</li></ul>' },
+                        { q: 'How do I share a quest with friends?', a: '<p>Every quest card has a link icon (🔗) in the top right. Clicking it copies a direct link to that exact quest to your clipboard — you can paste it into a chat group, for example.</p>' },
+                        { q: 'How do I add the date to my own calendar?', a: '<p>The 📅 icon on the card or in the detail view opens a choice: add it directly to <strong>Google Calendar</strong>, or download a universal <strong>.ics file</strong> recognized by Apple Calendar, Outlook, Thunderbird, and more. The description is automatically filled with the link to the quest.</p><p>This works regardless of whether you\'re logged in or participating — anyone can add the event to their calendar.</p>' },
+                        { q: 'Do I need to check the opening hours of the locations?', a: "<p>Yes. The app doesn't automatically check opening hours. Please check independently, especially for sessions outside the usual hours.</p>" }
+                    ]
+                },
+                {
+                    id: 'erstellen', heading: '➕ Creating a quest & BGG linking', items: [
+                        { q: 'How do I create a quest?', a: '<p>Click "Offer a new quest" and fill in the game name, location, date, time and number of seats. Optionally add a duration and tags (e.g. "Cooperative", "Beginner-friendly").</p>' },
+                        { q: 'What does the "🎲 BGG" button do?', a: '<p>It searches the game you typed on BoardGameGeek (the largest game database online). Selecting a result shows an instant preview with cover image, rating and complexity rating. Once you confirm the match, that info is shown on the quest card and in the detail view.</p>' },
+                        { q: 'Why is the BGG description in English?', a: '<p>BoardGameGeek provides description texts almost exclusively in English — there\'s unfortunately no official German version available through their interface. Alternate titles are shown when BGG has them on file, but without any language guarantee.</p>' },
+                        { q: 'Can I create a quest without linking it to BGG?', a: '<p>Yes, any time. The game name stays plain free text — the BGG link is purely optional and can be removed again while editing.</p>' }
+                    ]
+                },
+                {
+                    id: 'chat', heading: '💬 Quest chat', items: [
+                        { q: 'What is the quest chat?', a: "<p>Every quest has its own small chat in the detail view, where participants and interested people can talk live — e.g. to coordinate who's bringing what, or discuss last-minute changes.</p>" },
+                        { q: 'Who can see and write in the chat?', a: "<p>Anyone who opens a quest's detail view can see the chat history. Only logged-in users can write messages — if you're not logged in, you'll see a prompt with a login link instead.</p>" }
+                    ]
+                },
+                {
+                    id: 'verwalten', heading: '⚙️ Managing your own quests', items: [
+                        { q: 'What is the difference between "Cancel" and "Delete"?', a: '<p>As the organizer of a quest, you have two options:</p><ul><li><strong>Cancel (⨷ icon):</strong> The quest is marked "CANCELLED" for others, and no one can join anymore. You can <strong>reactivate</strong> it at any time via the edit button (✏️).</li><li><strong>Delete:</strong> The edit window has a "Delete" button. This removes the quest <strong>permanently and irreversibly</strong> from the database — including its chat history.</li></ul>' },
+                        { q: 'Can I remove individual participants?', a: "<p>Yes. Open your quest's detail view — as the organizer, you'll see a small × next to each name in the participant list to remove them.</p>" }
+                    ]
+                }
+            ]
+        };
+
+        function renderContent() {
+            document.documentElement.lang = currentLang;
+            document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+            document.querySelectorAll('.qb-lang-btn').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.lang === currentLang ? 'true' : 'false'));
+
+            // Schritt-für-Schritt-Liste
+            const stepsList = document.getElementById('steps-list');
+            stepsList.innerHTML = steps[currentLang].map(step => `
+                <li class="qb-step">
+                    <div class="qb-step__num"></div>
+                    <div class="qb-step__body">
+                        <h3>${step.title}</h3>
+                        <p>${step.body}</p>
+                    </div>
+                </li>
+            `).join('');
+
+            // FAQ-Sektionen
+            const faqContainer = document.getElementById('faq-sections');
+            const sections = faq[currentLang];
+            faqContainer.innerHTML = sections.map(section => `
+                <section class="qb-faq-section" id="${section.id}">
+                    <h2>${section.heading}</h2>
+                    <div class="qb-faq-list">
+                        ${section.items.map(item => `
+                            <details class="qb-faq-item">
+                                <summary>${item.q}</summary>
+                                <div class="qb-faq-item__body">${item.a}</div>
+                            </details>
+                        `).join('')}
+                    </div>
+                </section>
+            `).join('');
+
+            // Inhaltsverzeichnis
+            const toc = document.getElementById('toc');
+            toc.innerHTML = sections.map(section => `<a href="#${section.id}" class="cl-chip">${section.heading}</a>`).join('');
+        }
+
+        document.querySelectorAll('.qb-lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLang = btn.dataset.lang;
+                localStorage.setItem('qb_lang', currentLang);
+                renderContent();
+            });
+        });
+
+        renderContent();
+    </script>
 </body>
 </html>
-
